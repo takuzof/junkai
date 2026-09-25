@@ -61,7 +61,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.6.8</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.6.8</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.6.9</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.6.9</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -167,6 +167,15 @@ function deleteProperty(id){
  localStorage.setItem("inspection_properties",JSON.stringify(props().filter(x=>x.id!==id)));renderProperties(document.getElementById("propertySearch")?.value||"");
 }
 function startInspection(id){let p=props().find(x=>x.id===id);draft={id:Date.now().toString(),property:p,date:new Date().toLocaleDateString("ja-JP"),categories:CATEGORIES.map(c=>({name:c.name,comment:"",items:c.items.map(i=>({name:i,status:"",photos:[]}))})),overall:""};current=0;saveDraft();sections("inspection");renderCategory()}
+
+function moveCategory(delta){
+  if(!requirePhotoCommentBeforeNext()) return;
+  const next=current+delta;
+  if(next<0 || next>=draft.categories.length) return;
+  current=next;
+  renderCategory();
+}
+
 function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];title("巡回点検",draft.property.name);insProp.textContent=draft.property.name;insDate.textContent=draft.date;catCounter.textContent=`${current+1} / ${CATEGORIES.length}`;progressBar.style.width=((current+1)/CATEGORIES.length*100)+"%";categoryCard.innerHTML=`<div class="card"><div class="category-title">${c.name}</div><div class="category-desc">${c.desc}</div>${c.items.map((it,i)=>`<div class="item"><div class="item-head">${it}</div><div class="mini-status">${STATUS.map(s=>`<button class="${d.items[i].status===s?"active":""}" onclick="setStatus(${i},'${s}')">${s}</button>`).join("")}</div><div class="photo-tools"><button class="photo-add" onclick="choosePhotos(${i})">📷 写真を追加</button>${renderPhotos(i)}</div></div>`).join("")}<label>このカテゴリーのコメント</label><textarea id="catComment" placeholder="気付いた点・対応が必要な内容など" oninput="setComment(this.value)">${esc(d.comment)}</textarea></div>`}
 
 let photoTargetItem=null;
@@ -303,8 +312,10 @@ function setStatus(i,s){
  renderCategory();
 }
 function setComment(v){draft.categories[current].comment=v;saveDraft()}
-function nextCategory(){if(current<CATEGORIES.length-1){current++;renderCategory();scrollTo(0,0)}else showSummary()}
-function prevCategory(){if(current>0){current--;renderCategory();scrollTo(0,0)}else{sections("properties");document.getElementById("footer").classList.add("hidden");title("物件を選択","巡回する物件を選んでください");renderProperties()}}
+function nextCategory(){
+ if(!requirePhotoCommentBeforeNext()) return;if(current<CATEGORIES.length-1){current++;renderCategory();scrollTo(0,0)}else showSummary()}
+function prevCategory(){
+ if(!requirePhotoCommentBeforeNext()) return;if(current>0){current--;renderCategory();scrollTo(0,0)}else{sections("properties");document.getElementById("footer").classList.add("hidden");title("物件を選択","巡回する物件を選んでください");renderProperties()}}
 function showSummary(){
  sections("summary");title("巡回確認",draft.property.name);
  let h="",un=0;
@@ -404,6 +415,7 @@ function saveCurrentInspection(){
  saveHistories(h); return snap;
 }
 function validateAndSaveInspection(){
+ if(!requirePhotoCommentBeforeNext()) return false;
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";
  let misses=validateRequired();
  if(misses.length){
@@ -415,10 +427,12 @@ function validateAndSaveInspection(){
  return true;
 }
 async function validatedSharePDF(){
+ if(!requirePhotoCommentBeforeNext()) return;
  if(!draft||!validateAndSaveInspection())return;
  await createAndSharePDF();
 }
 async function validatedPreviewPDF(){
+ if(!requirePhotoCommentBeforeNext()) return;
  if(!draft||!validateAndSaveInspection())return;
  await previewPDF();
 }
@@ -639,7 +653,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.6.8");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.6.9");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -649,7 +663,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.6.8: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.6.9: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
