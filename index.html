@@ -49,13 +49,18 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.4</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.4</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.5</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.5</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
  <div class="card" id="draftCard"><div class="property"><div><b>保存中の巡回</b><small id="draftInfo">現在、作業中の巡回はありません</small></div><button class="smallbtn" id="resumeBtn" onclick="resumeDraft()" style="display:none">再開</button></div></div>
  <div class="card"><div class="property"><div><b>物件登録</b><small>登録は最初の1回だけ。次回から一覧から選べます。</small></div><span class="pill">繰り返し利用</span></div></div>
  <button class="secondary" onclick="showAddProperty()">＋ 物件を登録</button>
+ <div class="card" style="margin-top:13px">
+  <b>物件マスター</b><p class="sub">物件一覧だけを別のiPhoneへ移せます。巡回結果や写真は含みません。</p>
+  <div class="row"><button class="secondary" onclick="exportProperties()">書き出す</button><button class="secondary" onclick="document.getElementById('propertyImport').click()">読み込む</button></div>
+ </div>
+ <input id="propertyImport" type="file" accept=".json,application/json" class="hidden" onchange="importProperties(event)">
 </section>
 
 <section id="properties" class="hidden">
@@ -77,7 +82,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </section>
 
 <section id="summary" class="hidden">
- <div class="card"><h2 style="margin-top:0">巡回内容の確認</h2><div id="summaryBody"></div></div>
+ <div class="card"><h2 style="margin-top:0">巡回内容の確認</h2><div id="completionWarning"></div><div id="summaryBody"></div></div>
  <div class="card"><label>総合コメント</label><textarea id="overall" placeholder="今回の巡回についての総合コメント"></textarea></div>
  <button class="primary" id="pdfShareBtn" onclick="createAndSharePDF()">PDFを作成して会社へ送る</button>
  <button class="secondary" style="margin-top:9px" onclick="previewPDF()">PDFを作成して確認</button>
@@ -200,7 +205,40 @@ function setStatus(i,s){draft.categories[current].items[i].status=s;saveDraft();
 function setComment(v){draft.categories[current].comment=v;saveDraft()}
 function nextCategory(){if(current<CATEGORIES.length-1){current++;renderCategory();scrollTo(0,0)}else showSummary()}
 function prevCategory(){if(current>0){current--;renderCategory();scrollTo(0,0)}else{sections("properties");document.getElementById("footer").classList.add("hidden");title("物件を選択","巡回する物件を選んでください");renderProperties()}}
-function showSummary(){sections("summary");title("巡回確認",draft.property.name);let h="";draft.categories.forEach(c=>{let x=c.items.filter(i=>i.status==="×").length,w=c.items.filter(i=>i.status==="△").length;let pc=c.items.reduce((n,i)=>n+((i.photos||[]).length),0);h+=`<div class="summary-line"><span><b>${c.name}</b></span><span>${x?`<span class="danger">× ${x}</span>`:""} ${w?`△ ${w}`:""} ${pc?`📷 ${pc}`:""}</span></div>`});summaryBody.innerHTML=h;overall.value=draft.overall||"";overall.oninput=()=>{draft.overall=overall.value;saveDraft()}}
+function showSummary(){
+ sections("summary");title("巡回確認",draft.property.name);
+ let h="",un=0;
+ draft.categories.forEach(c=>{
+   let x=c.items.filter(i=>i.status==="×").length,w=c.items.filter(i=>i.status==="△").length,u=c.items.filter(i=>!i.status).length;
+   un+=u;let pc=c.items.reduce((n,i)=>n+((i.photos||[]).length),0);
+   h+=`<div class="summary-line"><span><b>${c.name}</b></span><span>${x?`<span class="danger">× ${x}</span>`:""} ${w?`△ ${w}`:""} ${u?`未 ${u}`:""} ${pc?`📷 ${pc}`:""}</span></div>`
+ });
+ summaryBody.innerHTML=h;
+ completionWarning.innerHTML=un?`<div style="padding:11px;border-radius:12px;background:#fff3e5;color:#8a5a00;font-weight:800;margin-bottom:10px">未点検が ${un} 件あります</div>`:`<div style="padding:11px;border-radius:12px;background:#edf8f2;color:#26734d;font-weight:800;margin-bottom:10px">全項目の入力が完了しています</div>`;
+ overall.value=draft.overall||"";overall.oninput=()=>{draft.overall=overall.value;saveDraft()}
+}
+
+function exportProperties(){
+ let data={type:"junkai-property-master",version:1,exportedAt:new Date().toISOString(),properties:props()};
+ let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ let file=new File([blob],"巡回点検_物件マスター.json",{type:"application/json"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   navigator.share({title:"巡回点検 物件マスター",files:[file]}).catch(()=>{});
+ }else{
+   let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),30000);
+ }
+}
+async function importProperties(e){
+ let file=e.target.files?.[0];e.target.value="";if(!file)return;
+ try{
+   let data=JSON.parse(await file.text());
+   if(data.type!=="junkai-property-master"||!Array.isArray(data.properties))throw new Error();
+   let current=props(),map=new Map(current.map(p=>[p.id,p]));
+   data.properties.forEach(p=>{if(p&&p.id&&p.name)map.set(p.id,{id:p.id,name:p.name,address:p.address||"",memo:p.memo||""})});
+   localStorage.setItem("inspection_properties",JSON.stringify([...map.values()]));
+   alert(`${data.properties.length}件の物件マスターを読み込みました。`);refreshHome();
+ }catch(err){alert("巡回点検の物件マスターファイルを読み込めませんでした。")}
+}
 
 function collectReportPhotos(){
  let out=[];
@@ -228,49 +266,65 @@ function drawCoverHeader(ctx,pageNo,total){
 async function buildReportCanvases(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";saveDraft();
  const photos=collectReportPhotos(), photoPages=Math.ceil(photos.length/6), total=1+photoPages, pages=[];
- // page 1: report summary
+ const issues=[];
+ draft.categories.forEach(c=>c.items.forEach(i=>{if(i.status==="×"||i.status==="△")issues.push({category:c.name,item:i.name,status:i.status,comment:(i.photos||[]).map(p=>p.comment).filter(Boolean)[0]||c.comment||""})}));
  let c=document.createElement("canvas");c.width=1240;c.height=1754;let x=c.getContext("2d");
  x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);drawCoverHeader(x,1,total);
  x.fillStyle="#1d2939";x.font="700 34px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(draft.property.name,70,185);
  x.font="500 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillStyle="#667085";
  x.fillText(`巡回日：${draft.date}`,70,230);x.fillText(`住所：${draft.property.address||"未登録"}`,70,267);
  let sc=statusCounts();x.fillStyle="#f3f6f9";x.fillRect(70,305,1100,90);
- x.fillStyle="#1d2939";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- x.fillText(`○ 良好 ${sc["○"]}件`,105,360);x.fillText(`△ 経過観察 ${sc["△"]}件`,350,360);x.fillText(`× 要対応 ${sc["×"]}件`,650,360);x.fillText(`－ 対象外 ${sc["－"]}件`,910,360);
- let y=450;x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("点検結果",70,y);y+=35;
- for(const cat of draft.categories){
-   x.strokeStyle="#d8e0e8";x.beginPath();x.moveTo(70,y);x.lineTo(1170,y);x.stroke();y+=30;
-   x.fillStyle="#18365b";x.font="700 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(cat.name,80,y);
-   y+=30;x.font="500 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillStyle="#344054";
-   for(const it of cat.items){
-     let st=it.status||"未";x.fillStyle=st==="×"?"#a23b3b":st==="△"?"#a06a12":"#344054";
-     x.fillText(`${st}  ${it.name}`,100,y);y+=27;
+ x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ [["○",105,"#26734d","良好"],["△",350,"#a06a12","経過観察"],["×",650,"#a23b3b","要対応"],["未",930,"#667085","未点検"]].forEach(v=>{x.fillStyle=v[2];x.fillText(`${v[0]} ${v[3]} ${sc[v[0]]||0}件`,v[1],360)});
+ let y=445;
+ x.fillStyle="#18365b";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("指摘事項",70,y);y+=30;
+ if(!issues.length){x.fillStyle="#26734d";x.font="600 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("△・×の指摘事項はありません",85,y);y+=38}
+ else{
+   for(const it of issues.slice(0,10)){
+     x.fillStyle=it.status==="×"?"#fff0f0":"#fff7e8";x.fillRect(75,y-20,1085,it.comment?64:42);
+     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillText(`${it.status}  ${it.category} / ${it.item}`,90,y);
+     if(it.comment){x.fillStyle="#475467";x.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(wrapCanvasText(x,it.comment,980)[0]||"",105,y+25);y+=68}else y+=48;
    }
-   if(cat.comment){x.fillStyle="#667085";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";for(const ln of wrapCanvasText(x,"コメント："+cat.comment,980).slice(0,2)){x.fillText(ln,100,y);y+=23}}
-   y+=16;if(y>1450)break;
  }
- x.fillStyle="#18365b";x.font="700 23px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("総合コメント",70,1580);
- x.fillStyle="#344054";x.font="500 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- let oy=1620;for(const ln of wrapCanvasText(x,draft.overall||"特記事項なし",1080).slice(0,4)){x.fillText(ln,80,oy);oy+=27}
+ y+=8;x.fillStyle="#18365b";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("点検結果",70,y);y+=30;
+ for(const cat of draft.categories){
+   let answered=cat.items.filter(i=>i.status).length,bad=cat.items.filter(i=>i.status==="×").length,warn=cat.items.filter(i=>i.status==="△").length;
+   x.strokeStyle="#d8e0e8";x.beginPath();x.moveTo(70,y);x.lineTo(1170,y);x.stroke();y+=28;
+   x.fillStyle="#18365b";x.font="700 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(cat.name,80,y);
+   x.textAlign="right";x.fillStyle="#667085";x.font="600 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(`入力 ${answered}/${cat.items.length}${bad?`  ×${bad}`:""}${warn?`  △${warn}`:""}`,1160,y);x.textAlign="left";y+=25;
+   for(const it of cat.items.filter(i=>i.status==="×"||i.status==="△")){
+     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";x.font="600 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(`${it.status} ${it.name}`,100,y);y+=21;
+   }
+   y+=10;if(y>1460)break;
+ }
+ x.fillStyle="#18365b";x.font="700 23px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("総合コメント",70,1570);
+ x.fillStyle="#344054";x.font="500 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ let oy=1610;for(const ln of wrapCanvasText(x,draft.overall||"特記事項なし",1080).slice(0,4)){x.fillText(ln,80,oy);oy+=25}
  pages.push(c);
- // photo pages, 6 photos/page
+
  for(let pg=0;pg<photoPages;pg++){
    let pc=document.createElement("canvas");pc.width=1240;pc.height=1754;let ctx=pc.getContext("2d");
    ctx.fillStyle="#fff";ctx.fillRect(0,0,pc.width,pc.height);drawCoverHeader(ctx,pg+2,total);
    ctx.fillStyle="#1d2939";ctx.font="700 28px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";ctx.fillText("点検写真",70,175);
-   let batch=photos.slice(pg*6,pg*6+6);
-   for(let k=0;k<batch.length;k++){
-     let col=k%2,row=Math.floor(k/2), bx=70+col*555, by=215+row*490, bw=515,bh=315;
-     ctx.fillStyle="#f3f6f9";ctx.fillRect(bx,by,bw,bh);
+   let batch=photos.slice(pg*6,pg*6+6), count=batch.length;
+   let cols=count<=2?1:2, rows=Math.ceil(count/cols);
+   let areaTop=215, areaBottom=1660, gapX=40, gapY=30;
+   let bw=cols===1?1050:515, cellH=(areaBottom-areaTop-gapY*(rows-1))/rows;
+   let imageH=Math.min(count<=2?520:315,cellH-95);
+   for(let k=0;k<count;k++){
+     let col=k%cols,row=Math.floor(k/cols),bx=70+col*(bw+gapX),by=areaTop+row*(cellH+gapY);
+     ctx.fillStyle="#f3f6f9";ctx.fillRect(bx,by,bw,imageH);
      try{
-       let img=await loadImg(batch[k].data),scale=Math.min(bw/img.width,bh/img.height),dw=img.width*scale,dh=img.height*scale;
-       ctx.drawImage(img,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh);
+       let img=await loadImg(batch[k].data),scale=Math.min(bw/img.width,imageH/img.height),dw=img.width*scale,dh=img.height*scale;
+       ctx.drawImage(img,bx+(bw-dw)/2,by+(imageH-dh)/2,dw,dh);
      }catch(e){}
-     ctx.fillStyle="#18365b";ctx.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-     ctx.fillText(`${batch[k].status}  ${batch[k].category} / ${batch[k].item}`,bx,by+348);
-     ctx.fillStyle="#475467";ctx.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     ctx.fillStyle=batch[k].status==="×"?"#a23b3b":batch[k].status==="△"?"#a06a12":"#18365b";
+     ctx.font="700 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     ctx.fillText(`${batch[k].status}  ${batch[k].category} / ${batch[k].item}`,bx,by+imageH+28);
+     ctx.fillStyle="#475467";ctx.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      let lines=wrapCanvasText(ctx,batch[k].comment||"コメントなし",bw);
-     lines.slice(0,3).forEach((ln,z)=>ctx.fillText(ln,bx,by+378+z*22));
+     lines.slice(0,2).forEach((ln,z)=>ctx.fillText(ln,bx,by+imageH+54+z*21));
    }
    pages.push(pc);
  }
@@ -324,7 +378,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.4");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.5");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
