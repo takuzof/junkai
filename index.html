@@ -61,7 +61,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.6.4</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.6.4</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.6.6</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.6.6</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -190,6 +190,10 @@ async function handlePhotos(e){
  saveDraft();
  renderCategory();
  photoTargetItem=null;
+
+  const completedPhotoItem=photoTargetItem;
+  renderCategory();
+  focusRequiredComment(completedPhotoItem);
 }
 function compressImage(file,maxSide,quality){
  return new Promise((resolve,reject)=>{
@@ -224,6 +228,41 @@ function deletePhoto(i,j){
  if(!confirm("この写真を削除しますか？"))return;
  draft.categories[current].items[i].photos.splice(j,1);
  saveDraft();renderCategory();
+}
+
+
+function focusRequiredComment(itemIndex){
+  const it=draft.categories[current]?.items?.[itemIndex];
+  if(!it || it.status!=="×") return;
+
+  /* 写真を撮ったら、その写真自身のコメント欄を最優先で入力 */
+  const item=draft.categories[current]?.items?.[itemIndex];
+  const photoIndex=Math.max(0,(item?.photos||[]).length-1);
+  const candidates=[...document.querySelectorAll("textarea,input[type='text']")];
+  const ta=candidates.find(el=>{
+    const a=(el.getAttribute("oninput")||"")+(el.getAttribute("onchange")||"");
+    return a.includes(`photoComment(${itemIndex},${photoIndex}`) || a.includes(`photoComment(${itemIndex}, ${photoIndex}`);
+  }) || document.querySelector("#category textarea") ||
+       document.querySelector("#categoryBody textarea") ||
+       document.querySelector('textarea[placeholder*="コメント"]');
+
+  if(ta){
+    ta.placeholder="この写真の状況・内容を入力してください（必須）";
+    ta.required=true;
+    let note=ta.parentElement?.querySelector(".required-note.v165");
+    if(!note && ta.parentElement){
+      note=document.createElement("div");
+      note.className="required-note v165";
+      note.textContent="写真を添付した場合：写真コメント必須";
+      ta.insertAdjacentElement("beforebegin",note);
+    }
+    setTimeout(()=>{
+      ta.scrollIntoView({behavior:"smooth",block:"center"});
+      ta.focus();
+    },180);
+  } else {
+    setTimeout(()=>alert("写真を登録しました。続けて要対応のコメントを入力してください。"),100);
+  }
 }
 
 function setStatus(i,s){
@@ -314,12 +353,20 @@ function itemComment(cat,item){
 function validateRequired(){
  let misses=[];
  draft.categories.forEach(cat=>cat.items.forEach(it=>{
-   if(it.status==="×"){
-     if(!(it.photos||[]).length) misses.push(`${cat.name} / ${it.name}：写真`);
-     if(!itemComment(cat,it).trim()) misses.push(`${cat.name} / ${it.name}：コメント`);
+   const photos=it.photos||[];
+   if(it.status==="×" && !photos.length){
+     misses.push(`${cat.name} / ${it.name}：要対応写真`);
+   }
+   photos.forEach((ph,idx)=>{
+     if(!(ph.comment||"").trim()){
+       misses.push(`${cat.name} / ${it.name}：写真${idx+1}のコメント`);
+     }
+   });
+   if(it.status==="×" && photos.length && !photos.some(ph=>(ph.comment||"").trim())){
+     /* 写真コメント必須チェックで捕捉。巡回コメント単独では完了扱いにしない */
    }
  }));
- return misses;
+ return [...new Set(misses)];
 }
 function snapshotDraft(){
  return {
@@ -340,7 +387,7 @@ function validateAndSaveInspection(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";
  let misses=validateRequired();
  if(misses.length){
-   alert("要対応（×）は写真とコメントが必須です。\n\n不足している項目：\n"+misses.join("\n"));
+   alert("要対応（×）は写真必須、また写真を添付した場合は写真ごとのコメントが必須です。\n\n不足している項目：\n"+misses.join("\n"));
    return false;
  }
  saveDraft();
@@ -572,7 +619,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.6.4");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.6.6");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -582,7 +629,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.6.4: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.6.6: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
