@@ -45,17 +45,30 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 .meta-chip{font-size:11px;padding:4px 7px;border-radius:8px;background:#f0f4f8;color:#526174}
 .meta-chip.alert{background:#fff1f1;color:var(--bad)}.meta-chip.warn{background:#fff7e8;color:#8b5d0b}
 .list-title{font-size:13px;font-weight:850;color:#667085;margin:4px 2px 9px}
+
+@media (min-width:768px){
+  .wrap{max-width:980px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .item{padding:16px 18px}
+  textarea{min-height:92px}
+}
+.required-note{font-size:12px;font-weight:800;color:#a23b3b;margin-top:6px}
+.month-card{border:1px solid #d8e0e8;border-radius:16px;padding:15px;margin:10px 0;background:#fff}
+.month-card h3{margin:0 0 7px;color:#18365b}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef3f8;font-size:12px;font-weight:800;margin-right:5px}
+.owner-text{min-height:100px}
 </style>
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.5</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.5</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.6</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.6</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
  <div class="card" id="draftCard"><div class="property"><div><b>保存中の巡回</b><small id="draftInfo">現在、作業中の巡回はありません</small></div><button class="smallbtn" id="resumeBtn" onclick="resumeDraft()" style="display:none">再開</button></div></div>
  <div class="card"><div class="property"><div><b>物件登録</b><small>登録は最初の1回だけ。次回から一覧から選べます。</small></div><span class="pill">繰り返し利用</span></div></div>
  <button class="secondary" onclick="showAddProperty()">＋ 物件を登録</button>
+ <button class="primary" style="margin-top:10px" onclick="showMonthly()">月次報告書を作る</button>
  <div class="card" style="margin-top:13px">
   <b>物件マスター</b><p class="sub">物件一覧だけを別のiPhoneへ移せます。巡回結果や写真は含みません。</p>
   <div class="row"><button class="secondary" onclick="exportProperties()">書き出す</button><button class="secondary" onclick="document.getElementById('propertyImport').click()">読み込む</button></div>
@@ -71,6 +84,18 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
  <p class="notice">物件登録は初回のみ。次回以降は一覧から選択できます。</p>
 </section>
 
+
+<section id="monthly" class="hidden">
+ <button class="back" onclick="refreshHome()">← 戻る</button>
+ <h1>月次管理報告書</h1>
+ <p class="sub">保存された巡回履歴から、オーナー様向けの月次報告書を作成します。</p>
+ <div class="card">
+  <label>物件</label><select id="monthProperty"></select>
+  <label>対象月</label><input id="monthValue" type="month">
+  <button class="primary" onclick="buildMonthlyView()">巡回履歴を集約</button>
+ </div>
+ <div id="monthlyResult"></div>
+</section>
 <section id="addProperty" class="hidden">
  <div class="card"><label>物件名</label><input id="propName" placeholder="例：サンライズマンション"><label>住所</label><input id="propAddress" placeholder="例：東京都品川区…"><label>管理メモ（任意）</label><textarea id="propMemo" placeholder="巡回時の注意事項など"></textarea></div>
  <button class="primary" onclick="saveProperty()">この物件を登録</button>
@@ -263,6 +288,150 @@ function drawCoverHeader(ctx,pageNo,total){
  ctx.fillStyle="#fff";ctx.font="700 38px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";ctx.fillText("巡回点検報告書",70,74);
  ctx.font="500 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";ctx.textAlign="right";ctx.fillText(`${pageNo} / ${total}`,1170,72);ctx.textAlign="left";
 }
+
+const HISTORY_KEY="inspection_history_v16";
+function histories(){try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]")}catch(e){return[]}}
+function saveHistories(v){localStorage.setItem(HISTORY_KEY,JSON.stringify(v))}
+function itemComment(cat,item){
+  return (item.photos||[]).map(p=>p.comment||"").find(Boolean) || cat.comment || "";
+}
+function validateRequired(){
+ let misses=[];
+ draft.categories.forEach(cat=>cat.items.forEach(it=>{
+   if(it.status==="×"){
+     if(!(it.photos||[]).length) misses.push(`${cat.name} / ${it.name}：写真`);
+     if(!itemComment(cat,it).trim()) misses.push(`${cat.name} / ${it.name}：コメント`);
+   }
+ }));
+ return misses;
+}
+function snapshotDraft(){
+ return {
+  id:"h_"+Date.now(), property:{...draft.property}, date:draft.date,
+  overall:draft.overall||"", savedAt:new Date().toISOString(),
+  categories:draft.categories.map(c=>({name:c.name,comment:c.comment||"",items:c.items.map(i=>({
+    name:i.name,status:i.status||"",photos:(i.photos||[]).map(p=>({data:p.data,comment:p.comment||""}))
+  }))}))
+ };
+}
+function saveCurrentInspection(){
+ let h=histories(), snap=snapshotDraft();
+ let same=h.findIndex(v=>v.property.id===snap.property.id && v.date===snap.date);
+ if(same>=0) h[same]=snap; else h.push(snap);
+ saveHistories(h); return snap;
+}
+async function completeAndGeneratePDF(){
+ draft.overall=document.getElementById("overall")?.value||draft.overall||"";
+ let misses=validateRequired();
+ if(misses.length){
+   alert("要対応（×）は写真とコメントが必須です。\n\n不足している項目：\n"+misses.join("\n"));
+   return;
+ }
+ saveCurrentInspection();
+ await generatePDF();
+}
+function showMonthly(){
+ sections("monthly"); title("月次報告書","オーナー様向け");
+ let ps=props(); monthProperty.innerHTML=ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+ let d=new Date();monthValue.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+ monthlyResult.innerHTML="";
+}
+function monthRecords(pid,ym){
+ return histories().filter(h=>h.property.id===pid && (h.date||"").slice(0,7)===ym).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function escapeHtml(t){return String(t||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function summarizeMonthly(rs){
+ let issueMap=new Map(), counts={"○":0,"△":0,"×":0,"－":0};
+ rs.forEach(r=>r.categories.forEach(c=>c.items.forEach(i=>{
+   if(i.status) counts[i.status]=(counts[i.status]||0)+1;
+   if(i.status==="×"||i.status==="△"){
+     let key=c.name+" / "+i.name, a=issueMap.get(key)||[];
+     a.push({date:r.date,status:i.status,comment:itemComment(c,i),photos:i.photos||[]});issueMap.set(key,a)
+   }
+ })));
+ let parts=[];
+ issueMap.forEach((arr,key)=>{
+   let last=arr[arr.length-1], first=arr[0];
+   let cs=[...new Set(arr.map(a=>a.comment).filter(Boolean))];
+   let evolution=arr.length>1?`${arr.length}回の巡回で確認`:"巡回時に確認";
+   parts.push(`${key}は${evolution}${cs.length?`（${cs.join("／")}）`:""}。`);
+ });
+ return {counts,issueMap,auto:parts.join(" ") || "今月の巡回では、特段の要対応・経過観察事項はありませんでした。"};
+}
+function buildMonthlyView(){
+ let pid=monthProperty.value,ym=monthValue.value,rs=monthRecords(pid,ym);
+ if(!rs.length){monthlyResult.innerHTML='<div class="card">この月の保存済み巡回記録はありません。</div>';return}
+ let p=props().find(v=>v.id===pid), sm=summarizeMonthly(rs);
+ let issueHtml="";
+ sm.issueMap.forEach((arr,key)=>{
+   let last=arr[arr.length-1], id="own_"+Math.random().toString(36).slice(2);
+   issueHtml+=`<div class="month-card"><h3>${escapeHtml(key)}</h3>
+    <span class="badge">${arr.length}回確認</span><span class="badge">最新 ${escapeHtml(last.status)}</span>
+    <p>${arr.map(a=>`${escapeHtml(a.date)} ${escapeHtml(a.status)} ${escapeHtml(a.comment||"")}`).join("<br>")}</p>
+    <label>オーナー様向け個別コメント</label><textarea class="owner-text ownerIssue" data-key="${escapeHtml(key)}" placeholder="巡回コメントとは別に、オーナー様へ伝える内容を入力できます。"></textarea></div>`;
+ });
+ monthlyResult.innerHTML=`<div class="card"><h2>${escapeHtml(p?.name||"")}　${escapeHtml(ym)} 月次管理報告</h2>
+   <p><b>巡回回数：</b>${rs.length}回　<span class="badge">○ ${sm.counts["○"]}</span><span class="badge">△ ${sm.counts["△"]}</span><span class="badge">× ${sm.counts["×"]}</span><span class="badge">－ ${sm.counts["－"]}</span></p>
+   <p><b>巡回日：</b>${rs.map(r=>r.date).join("、")}</p>
+   <label>月間まとめコメント（自動下書き・編集可）</label>
+   <textarea id="monthlySummary" class="owner-text">${escapeHtml(sm.auto)}</textarea>
+   <label>オーナー様向け月次個別コメント</label>
+   <textarea id="monthlyOwnerComment" class="owner-text" placeholder="今月全体について、オーナー様へ個別に伝える内容を入力"></textarea>
+ </div>${issueHtml}
+ <button class="primary" onclick="generateMonthlyPDF()">オーナー向け月次報告書PDFを作成</button>`;
+ window._monthly={p,ym,rs,sm};
+}
+async function generateMonthlyPDF(){
+ let m=window._monthly;if(!m)return;
+ let canvases=await buildMonthlyCanvases(m);
+ let bytes=canvasesToPdf(canvases), blob=new Blob([bytes],{type:"application/pdf"});
+ let safe=(m.p?.name||"物件").replace(/[\\/:*?"<>|]/g,"_"), name=`${m.ym}_${safe}_月次管理報告書.pdf`;
+ let file=new File([blob],name,{type:"application/pdf"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   try{await navigator.share({title:name,files:[file]});return}catch(e){if(e.name==="AbortError")return}
+ }
+ let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),30000);
+}
+async function buildMonthlyCanvases(m){
+ let pages=[], allIssues=[];
+ m.sm.issueMap.forEach((arr,key)=>{let last=arr[arr.length-1];allIssues.push({key,arr,last})});
+ allIssues.sort((a,b)=>(a.last.status==="×"?0:1)-(b.last.status==="×"?0:1));
+ let ownerMap={};document.querySelectorAll(".ownerIssue").forEach(t=>ownerMap[t.dataset.key]=t.value.trim());
+ let summary=document.getElementById("monthlySummary")?.value||m.sm.auto;
+ let owner=document.getElementById("monthlyOwnerComment")?.value||"";
+ const make=()=>{let c=document.createElement("canvas");c.width=1240;c.height=1754;let x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,1240,1754);return [c,x]};
+ let [c,x]=make();x.fillStyle="#18365b";x.fillRect(0,0,1240,120);x.fillStyle="#fff";x.font="700 34px -apple-system, sans-serif";x.fillText("月次管理報告書",70,75);
+ x.fillStyle="#1d2939";x.font="700 32px -apple-system, sans-serif";x.fillText(m.p.name,70,185);
+ x.fillStyle="#667085";x.font="500 21px -apple-system, sans-serif";x.fillText(`${m.ym.replace("-","年")}月　巡回 ${m.rs.length}回`,70,225);
+ let y=285;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("今月の巡回概要",70,y);y+=40;
+ x.fillStyle="#f3f6f9";x.fillRect(70,y-25,1100,70);x.font="700 22px -apple-system, sans-serif";
+ x.fillStyle="#26734d";x.fillText(`○ ${m.sm.counts["○"]}`,105,y+18);x.fillStyle="#a06a12";x.fillText(`△ ${m.sm.counts["△"]}`,330,y+18);x.fillStyle="#a23b3b";x.fillText(`× ${m.sm.counts["×"]}`,555,y+18);x.fillStyle="#667085";x.fillText(`－ ${m.sm.counts["－"]}`,780,y+18);
+ y+=90;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("月間まとめ",70,y);y+=38;
+ x.fillStyle="#344054";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,summary,1060)){x.fillText(ln,80,y);y+=27;if(y>700)break}
+ if(owner){y+=25;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("管理会社コメント",70,y);y+=38;x.fillStyle="#344054";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,owner,1060)){x.fillText(ln,80,y);y+=27}}
+ y+=35;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("ご報告事項",70,y);y+=35;
+ for(const it of allIssues.slice(0,8)){
+   x.fillStyle=it.last.status==="×"?"#a23b3b":"#a06a12";x.font="700 19px -apple-system, sans-serif";x.fillText(`${it.last.status} ${it.key}`,85,y);y+=26;
+   let tx=ownerMap[it.key]||it.last.comment||"";
+   x.fillStyle="#475467";x.font="500 16px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,tx,1020).slice(0,2)){x.fillText(ln,105,y);y+=22}y+=15;if(y>1580)break
+ }
+ pages.push(c);
+ // Photo pages: latest issue photos, x then triangle, up to 4/page for owner readability
+ let pics=[];allIssues.forEach(it=>{let chosen=[...it.arr].reverse().find(a=>(a.photos||[]).length);if(chosen)chosen.photos.slice(0,2).forEach(ph=>pics.push({key:it.key,status:chosen.status,date:chosen.date,ph,owner:ownerMap[it.key]||chosen.comment||""}))});
+ for(let n=0;n<pics.length;n+=4){
+   let [pc,ctx]=make();ctx.fillStyle="#18365b";ctx.fillRect(0,0,1240,120);ctx.fillStyle="#fff";ctx.font="700 32px -apple-system, sans-serif";ctx.fillText("月次管理報告書　点検写真",70,75);
+   let batch=pics.slice(n,n+4);
+   for(let k=0;k<batch.length;k++){
+     let col=k%2,row=Math.floor(k/2),bx=70+col*550,by=170+row*760,bw=510,bh=560;
+     ctx.fillStyle="#f3f6f9";ctx.fillRect(bx,by,bw,bh);
+     try{let img=await loadImg(batch[k].ph.data),sc=Math.min(bw/img.width,bh/img.height),dw=img.width*sc,dh=img.height*sc;ctx.drawImage(img,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh)}catch(e){}
+     ctx.fillStyle=batch[k].status==="×"?"#a23b3b":"#a06a12";ctx.font="700 18px -apple-system, sans-serif";ctx.fillText(`${batch[k].status} ${batch[k].key}`,bx,by+590);
+     ctx.fillStyle="#667085";ctx.font="500 15px -apple-system, sans-serif";ctx.fillText(batch[k].date,bx,by+615);
+     ctx.fillStyle="#344054";for(const ln of wrapCanvasText(ctx,batch[k].owner,bw).slice(0,3)){ctx.fillText(ln,bx,by+645);by+=20}
+   }pages.push(pc)
+ }
+ return pages;
+}
 async function buildReportCanvases(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";saveDraft();
  const photos=collectReportPhotos(), photoPages=Math.ceil(photos.length/6), total=1+photoPages, pages=[];
@@ -378,7 +547,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.5");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.6");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
