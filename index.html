@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.8.5</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.8.5</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.8.6</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.8.6</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -151,7 +151,7 @@ function sections(id){["home","properties","savedHistory","monthly","addProperty
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.8.5");
+ title("巡回点検","iPhone・iPad 現場点検 V1.8.6");
  updateHome();
  scrollTo(0,0);
 }
@@ -188,7 +188,7 @@ function deleteProperty(id){
  if(!confirm(`「${p.name}」を物件一覧から削除しますか？\n過去の巡回履歴は削除しません。`))return;
  localStorage.setItem("inspection_properties",JSON.stringify(props().filter(x=>x.id!==id)));renderProperties(document.getElementById("propertySearch")?.value||"");
 }
-function startInspection(id){let p=props().find(x=>x.id===id);draft={id:Date.now().toString(),property:p,date:(()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`})(),categories:CATEGORIES.map(c=>({name:c.name,comment:"",items:c.items.map(i=>({name:i,status:"",photos:[]}))})),overall:""};current=0;saveDraft();sections("inspection");renderCategory()}
+function startInspection(id){let p=props().find(x=>x.id===id);draft={id:Date.now().toString(),property:p,date:(()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`})(),categories:CATEGORIES.map(c=>({name:c.name,comment:"",representativePhotos:[],items:c.items.map(i=>({name:i,status:"",photos:[]}))})),overall:""};current=0;saveDraft();sections("inspection");renderCategory()}
 
 function moveCategory(delta){
   if(!requirePhotoCommentBeforeNext()) return;
@@ -198,7 +198,7 @@ function moveCategory(delta){
   renderCategory();
 }
 
-function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];title("巡回点検",draft.property.name);insProp.textContent=draft.property.name;insDate.textContent=draft.date;catCounter.textContent=`${current+1} / ${CATEGORIES.length}`;progressBar.style.width=((current+1)/CATEGORIES.length*100)+"%";categoryCard.innerHTML=`<div class="card"><div class="category-title">${c.name}</div><div class="category-desc">${c.desc}</div>${c.items.map((it,i)=>`<div class="item"><div class="item-head">${it}</div><div class="mini-status">${STATUS.map(s=>`<button class="${d.items[i].status===s?"active":""}" onclick="setStatus(${i},'${s}')">${s}</button>`).join("")}</div>${(d.items[i].status==="△"||d.items[i].status==="×")?`<div class="item-comment-box"><label style="font-weight:800;color:${d.items[i].status==="×"?"#a23b3b":"#a06a12"}">${d.items[i].status==="×"?"要対応コメント":"経過観察コメント"}（必須）</label><textarea data-item-comment="${i}" placeholder="状況・対応内容を入力してください" oninput="setItemComment(${i},this.value)">${esc(d.items[i].comment||"")}</textarea></div>`:""}<div class="photo-tools"><button class="photo-add" onclick="choosePhotos(${i})">📷 写真を追加</button>${renderPhotos(i)}</div></div>`).join("")}<label>このカテゴリーのコメント</label><textarea id="catComment" placeholder="気付いた点・対応が必要な内容など" oninput="setComment(this.value)">${esc(d.comment)}</textarea></div>`}
+function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];title("巡回点検",draft.property.name);insProp.textContent=draft.property.name;insDate.textContent=draft.date;catCounter.textContent=`${current+1} / ${CATEGORIES.length}`;progressBar.style.width=((current+1)/CATEGORIES.length*100)+"%";categoryCard.innerHTML=`<div class="card"><div class="category-title">${c.name}</div><div class="category-desc">${c.desc}</div><div class="card" style="background:#f7f9fc"><b>📷 代表写真</b><div class="sub">${c.name==="その他"?"異常がある場合のみ撮影":"月次報告用に代表写真を1枚以上撮影してください"}</div><button class="secondary" onclick="chooseRepresentativePhoto()">代表写真を撮影</button><div class="photo-grid">${(d.representativePhotos||[]).map((ph,j)=>`<div class="photo-card"><img src="${ph.data||ph.src||ph}"><div class="photo-actions"><span>代表写真 ${j+1}</span><button class="photo-delete" onclick="deleteRepresentativePhoto(${j})">削除</button></div></div>`).join("")}</div></div>${c.items.map((it,i)=>`<div class="item"><div class="item-head">${it}</div><div class="mini-status">${STATUS.map(s=>`<button class="${d.items[i].status===s?"active":""}" onclick="setStatus(${i},'${s}')">${s}</button>`).join("")}</div>${(d.items[i].status==="△"||d.items[i].status==="×")?`<div class="item-comment-box"><label style="font-weight:800;color:${d.items[i].status==="×"?"#a23b3b":"#a06a12"}">${d.items[i].status==="×"?"要対応コメント":"経過観察コメント"}（必須）</label><textarea data-item-comment="${i}" placeholder="状況・対応内容を入力してください" oninput="setItemComment(${i},this.value)">${esc(d.items[i].comment||"")}</textarea></div>`:""}<div class="photo-tools"><button class="photo-add" onclick="choosePhotos(${i})">📷 写真を追加</button>${renderPhotos(i)}</div></div>`).join("")}<label>このカテゴリーのコメント</label><textarea id="catComment" placeholder="気付いた点・対応が必要な内容など" oninput="setComment(this.value)">${esc(d.comment)}</textarea></div>`}
 
 let photoTargetItem=null;
 
@@ -213,6 +213,8 @@ function validateCurrentItemRequirements(){
  }
  return true;
 }
+function chooseRepresentativePhoto(){photoTargetItem="representative";photoInput.click()}
+function deleteRepresentativePhoto(j){let d=draft.categories[current];d.representativePhotos=d.representativePhotos||[];d.representativePhotos.splice(j,1);saveDraft();renderCategory()}
 function choosePhotos(i){
  photoTargetItem=i;
  let input=document.getElementById("photoInput");
@@ -224,6 +226,8 @@ function choosePhotos(i){
  }
 }
 async function handlePhotos(e){
+ if(photoTargetItem==="representative"){let d=draft.categories[current];d.representativePhotos=d.representativePhotos||[];let fs=e?.target?.files||e;for(const f of Array.from(fs||[])){try{d.representativePhotos.push({data:await compressImage(f),monthlyCandidate:true})}catch(e){}}photoTargetItem=null;saveDraft();renderCategory();if(photoInput)photoInput.value="";return}
+
  let files=[...e.target.files];
  if(photoTargetItem===null||!files.length)return;
  const completedPhotoItem=photoTargetItem;
@@ -326,7 +330,7 @@ function focusRequiredComment(itemIndex){
 function categoryPhotoRequirementMessage(){
  let cat=draft?.categories?.[draft.categoryIndex];
  if(!cat || cat.name==="その他") return "";
- return cat.items.some(it=>(it.photos||[]).length) ? "" : `「${cat.name}」は月次報告用に写真を最低1枚撮影してください。`;
+ return (cat.representativePhotos||[]).length ? "" : `「${cat.name}」の代表写真を1枚以上撮影してください。`;
 }
 function requireCategoryPhotoBeforeNext(){
  let msg=categoryPhotoRequirementMessage();
@@ -468,8 +472,8 @@ function itemComment(cat,item){
 function validateRequired(){
  let misses=[];
  draft.categories.forEach(cat=>{
-  if(cat.name!=="その他" && !cat.items.some(it=>(it.photos||[]).length))
-   misses.push(`${cat.name}：月次報告用写真が1枚以上必要です`);
+  if(cat.name!=="その他" && !(cat.representativePhotos||[]).length)
+   misses.push(`${cat.name}：代表写真が1枚以上必要です`);
  });
  draft.categories.forEach(cat=>cat.items.forEach(it=>{
   if(it.status==="×"&&!(it.photos||[]).length)misses.push(`${cat.name} / ${it.name}：要対応写真`);
@@ -481,7 +485,7 @@ function snapshotDraft(){
  return {
   id:"h_"+Date.now(), property:{...draft.property}, date:draft.date,
   overall:draft.overall||"", savedAt:new Date().toISOString(),
-  categories:draft.categories.map(c=>({name:c.name,comment:c.comment||"",items:c.items.map(i=>({
+  categories:draft.categories.map(c=>({name:c.name,comment:c.comment||"",representativePhotos:(c.representativePhotos||[]).map(ph=>({data:ph.data||ph.src||ph,monthlyCandidate:true})),items:c.items.map(i=>({
     name:i.name,status:i.status||"",comment:i.comment||"",photos:(i.photos||[]).map(p=>({data:p.data,comment:p.comment||"",monthlyCandidate:!!p.monthlyCandidate}))
   }))}))
  };
@@ -495,7 +499,7 @@ async function validateAndSaveInspection(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";
  let misses=validateRequired();
  if(misses.length){
-   alert("△・×は項目コメント必須、×は写真も必須です。\n\n不足している項目：\n"+misses.join("\n"));
+   alert("△・×は項目コメントと指摘写真が必須です。\n\n不足している項目：\n"+misses.join("\n"));
    return false;
  }
  saveDraft();
@@ -640,10 +644,10 @@ async function buildMonthlyCanvases(m){
  const W=1240,H=1754,pages=[];
  const make=()=>{let c=document.createElement("canvas");c.width=W;c.height=H;let x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,W,H);return [c,x]};
  const header=(x,title,sub,page,total)=>{x.fillStyle="#18365b";x.fillRect(0,0,W,115);x.fillStyle="#fff";x.font="800 34px sans-serif";x.fillText(title,70,62);x.font="500 19px sans-serif";x.fillText(sub,70,94);x.textAlign="right";x.fillText(`${page} / ${total}`,1170,94);x.textAlign="left"};
- const cats=["建物外周","エントランス","共用廊下・階段","ゴミ置場","駐輪場","植栽・外構","その他"],all=[];
- m.rs.forEach(r=>r.categories.forEach(cat=>cat.items.forEach(it=>(it.photos||[]).forEach(ph=>all.push({date:normalizeHistoryDate(r.date),cat:cat.name,item:it.name,status:it.status||"○",comment:it.comment||cat.comment||"",src:ph.data||ph.src||ph.url||ph,memo:ph.comment||"",candidate:!!ph.monthlyCandidate})))));
+ const cats=["建物外周","エントランス","共用廊下・階段","ゴミ置場","駐輪場","植栽・外構","その他"],all=[],repAll=[];
+ m.rs.forEach(r=>r.categories.forEach(cat=>{(cat.representativePhotos||[]).forEach(ph=>repAll.push({date:normalizeHistoryDate(r.date),cat:cat.name,status:"○",src:ph.data||ph.src||ph.url||ph}));cat.items.forEach(it=>(it.photos||[]).forEach(ph=>all.push({date:normalizeHistoryDate(r.date),cat:cat.name,item:it.name,status:it.status||"○",comment:it.comment||cat.comment||"",src:ph.data||ph.src||ph.url||ph,memo:ph.comment||""})))}));
  const issues=all.filter(v=>v.status==="×"||v.status==="△"),reps=[];
- cats.forEach(cat=>{let arr=all.filter(v=>v.cat===cat);if(!arr.length)return;arr.sort((a,b)=>{let f=v=>(v.status==="×"?300:v.status==="△"?200:0)+(v.candidate?100:0);return f(b)-f(a)||b.date.localeCompare(a.date)});reps.push(arr[0])});
+ cats.forEach(cat=>{let arr=repAll.filter(v=>v.cat===cat).sort((a,b)=>b.date.localeCompare(a.date));if(!arr.length)return;let v={...arr[0],item:"代表写真",comment:""};let ci=issues.filter(q=>q.cat===cat).sort((a,b)=>(a.status==="×"?0:1)-(b.status==="×"?0:1)||b.date.localeCompare(a.date));if(ci.length){v.status=ci[0].status;v.item=ci[0].item;v.comment=ci[0].comment}reps.push(v)});
  const mainPages=Math.max(1,Math.ceil(reps.length/4)),issuePages=issues.length?Math.ceil(issues.length/4):0,total=mainPages+issuePages;
  const drawPhoto=async(x,v,bx,by,bw,bh)=>{try{let img=await loadImage(v.src),sc=Math.min(bw/img.width,bh/img.height),dw=img.width*sc,dh=img.height*sc;x.fillStyle="#f2f4f7";x.fillRect(bx,by,bw,bh);x.drawImage(img,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh)}catch(e){x.fillStyle="#f2f4f7";x.fillRect(bx,by,bw,bh)}};
  for(let pg=0;pg<mainPages;pg++){
@@ -896,7 +900,7 @@ async function previewPDF(){
  }
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.8.5");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.8.6");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -906,7 +910,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.8.5: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.8.6: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
