@@ -1,4 +1,4 @@
-const CACHE="junkai-v180";
+const CACHE="junkai-v181";
 const ASSETS=["./index.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install", event => {
