@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.4</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.4</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.5</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.5</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -143,7 +143,7 @@ function sections(id){["home","properties","monthly","addProperty","inspection",
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.7.4");
+ title("巡回点検","iPhone・iPad 現場点検 V1.7.5");
  updateHome();
  scrollTo(0,0);
 }
@@ -190,9 +190,21 @@ function moveCategory(delta){
   renderCategory();
 }
 
-function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];title("巡回点検",draft.property.name);insProp.textContent=draft.property.name;insDate.textContent=draft.date;catCounter.textContent=`${current+1} / ${CATEGORIES.length}`;progressBar.style.width=((current+1)/CATEGORIES.length*100)+"%";categoryCard.innerHTML=`<div class="card"><div class="category-title">${c.name}</div><div class="category-desc">${c.desc}</div>${c.items.map((it,i)=>`<div class="item"><div class="item-head">${it}</div><div class="mini-status">${STATUS.map(s=>`<button class="${d.items[i].status===s?"active":""}" onclick="setStatus(${i},'${s}')">${s}</button>`).join("")}</div><div class="photo-tools"><button class="photo-add" onclick="choosePhotos(${i})">📷 写真を追加</button>${renderPhotos(i)}</div></div>`).join("")}<label>このカテゴリーのコメント</label><textarea id="catComment" placeholder="気付いた点・対応が必要な内容など" oninput="setComment(this.value)">${esc(d.comment)}</textarea></div>`}
+function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];title("巡回点検",draft.property.name);insProp.textContent=draft.property.name;insDate.textContent=draft.date;catCounter.textContent=`${current+1} / ${CATEGORIES.length}`;progressBar.style.width=((current+1)/CATEGORIES.length*100)+"%";categoryCard.innerHTML=`<div class="card"><div class="category-title">${c.name}</div><div class="category-desc">${c.desc}</div>${c.items.map((it,i)=>`<div class="item"><div class="item-head">${it}</div><div class="mini-status">${STATUS.map(s=>`<button class="${d.items[i].status===s?"active":""}" onclick="setStatus(${i},'${s}')">${s}</button>`).join("")}</div>${(d.items[i].status==="△"||d.items[i].status==="×")?`<div class="item-comment-box"><label style="font-weight:800;color:${d.items[i].status==="×"?"#a23b3b":"#a06a12"}">${d.items[i].status==="×"?"要対応コメント":"経過観察コメント"}（必須）</label><textarea data-item-comment="${i}" placeholder="状況・対応内容を入力してください" oninput="setItemComment(${i},this.value)">${esc(d.items[i].comment||"")}</textarea></div>`:""}<div class="photo-tools"><button class="photo-add" onclick="choosePhotos(${i})">📷 写真を追加</button>${renderPhotos(i)}</div></div>`).join("")}<label>このカテゴリーのコメント</label><textarea id="catComment" placeholder="気付いた点・対応が必要な内容など" oninput="setComment(this.value)">${esc(d.comment)}</textarea></div>`}
 
 let photoTargetItem=null;
+
+function setItemComment(i,value){let it=draft.categories[current]?.items?.[i];if(it){it.comment=value;saveDraft();}}
+function focusItemComment(i){setTimeout(()=>{let el=document.querySelector(`[data-item-comment="${i}"]`);if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.focus();}},80);}
+function validateCurrentItemRequirements(){
+ let cat=draft.categories[current];if(!cat)return true;
+ for(let i=0;i<cat.items.length;i++){
+  let it=cat.items[i];
+  if(it.status==="×"&&!(it.photos||[]).length){alert("「× 要対応」の項目には写真が必須です。");return false;}
+  if((it.status==="△"||it.status==="×")&&!(it.comment||"").trim()){alert((it.status==="×"?"× 要対応":"△ 経過観察")+"の項目にはコメントが必須です。");focusItemComment(i);return false;}
+ }
+ return true;
+}
 function choosePhotos(i){
  photoTargetItem=i;
  let input=document.getElementById("photoInput");
@@ -218,7 +230,6 @@ async function handlePhotos(e){
  saveDraft();
  renderCategory();
  photoTargetItem=null;
- focusRequiredComment(completedPhotoItem);
 }
 function compressImage(file,maxSide,quality){
  return new Promise((resolve,reject)=>{
@@ -242,7 +253,7 @@ function compressImage(file,maxSide,quality){
 function renderPhotos(i){
  let photos=draft.categories[current].items[i].photos||[];
  if(!photos.length)return `<div class="photo-count">写真なし</div>`;
- return `<div class="photo-count">${photos.length}枚</div><div class="photo-grid">${photos.map((p,j)=>`<div class="photo-card"><img src="${p.data}" alt="点検写真"><div class="required-note">写真コメント必須・入力後に次へ進めます</div><textarea required placeholder="この写真の状況・内容を入力（必須）" oninput="photoComment(${i},${j},this.value)">${esc(p.comment||"")}</textarea><div class="photo-actions"><span>写真 ${j+1}</span><button class="photo-delete" onclick="deletePhoto(${i},${j})">削除</button></div></div>`).join("")}</div>`;
+ return `<div class="photo-count">${photos.length}枚</div><div class="photo-grid">${photos.map((p,j)=>`<div class="photo-card"><img src="${p.data}" alt="点検写真"><div class="required-note">写真メモ（任意）</div><textarea placeholder="写真メモ（任意）" oninput="photoComment(${i},${j},this.value)">${esc(p.comment||"")}</textarea><div class="photo-actions"><span>写真 ${j+1}</span><button class="photo-delete" onclick="deletePhoto(${i},${j})">削除</button></div></div>`).join("")}</div>`;
 }
 function photoComment(i,j,v){
  let p=draft.categories[current].items[i].photos[j];
@@ -311,55 +322,19 @@ function pendingPhotoComment(){
   }
   return null;
 }
-function requirePhotoCommentBeforeNext(){
-  const cat=draft.categories[current];
-  if(cat){
-    for(let i=0;i<cat.items.length;i++){
-      const it=cat.items[i];
-      if(it.status==="×" && !(it.photos||[]).length){
-        alert("「× 要対応」の項目には写真が必須です。\n写真を登録するまで次へ進めません。");
-        photoTargetItem=i;
-        renderCategory();
-        return false;
-      }
-    }
-  }
-  const miss=pendingPhotoComment();
-  if(!miss) return true;
-  alert("撮影した写真のコメントを入力してください。\nコメントを入力するまで次の項目へ進めません。");
-  focusRequiredComment(miss.itemIndex);
-  return false;
-}
+function requirePhotoCommentBeforeNext(){return validateCurrentItemRequirements();}
 
 function setStatus(i,s){
  let item=draft.categories[current].items[i];
-
- // ×を誤選択した場合、写真がなくても同じ項目の○・△・－への訂正は許可
- if(item.status==="×" && s!=="×" && !(item.photos||[]).length){
-   item.status=s;
-   photoTargetItem=null;
-   saveDraft();
-   renderCategory();
-   return;
+ if((item.status==="×"||item.status==="△")&&s!==item.status){
+  item.status=s;if(s!=="△"&&s!=="×")item.comment="";photoTargetItem=null;saveDraft();renderCategory();return;
  }
-
- // 訂正以外は未完了チェックを実施
- if(!requirePhotoCommentBeforeNext()) return;
-
- item.status=s;
- saveDraft();
-
- if(s==="×" && !(item.photos||[]).length){
-   photoTargetItem=i;
-   let input=document.getElementById("photoInput");
-   if(input){
-     input.value="";
-     input.setAttribute("accept","image/*");
-     input.setAttribute("capture","environment");
-     input.click();
-   }
- }
- renderCategory();
+ if(!requirePhotoCommentBeforeNext())return;
+ item.status=s;saveDraft();renderCategory();
+ if(s==="×"&&!(item.photos||[]).length){
+  photoTargetItem=i;let input=document.getElementById("photoInput");
+  if(input){input.value="";input.setAttribute("accept","image/*");input.setAttribute("capture","environment");input.click();}
+ }else if(s==="△"||s==="×"){focusItemComment(i);}
 }
 function setComment(v){draft.categories[current].comment=v;saveDraft()}
 function nextCategory(){
@@ -434,18 +409,8 @@ function itemComment(cat,item){
 function validateRequired(){
  let misses=[];
  draft.categories.forEach(cat=>cat.items.forEach(it=>{
-   const photos=it.photos||[];
-   if(it.status==="×" && !photos.length){
-     misses.push(`${cat.name} / ${it.name}：要対応写真`);
-   }
-   photos.forEach((ph,idx)=>{
-     if(!(ph.comment||"").trim()){
-       misses.push(`${cat.name} / ${it.name}：写真${idx+1}のコメント`);
-     }
-   });
-   if(it.status==="×" && photos.length && !photos.some(ph=>(ph.comment||"").trim())){
-     /* 写真コメント必須チェックで捕捉。巡回コメント単独では完了扱いにしない */
-   }
+  if(it.status==="×"&&!(it.photos||[]).length)misses.push(`${cat.name} / ${it.name}：要対応写真`);
+  if((it.status==="△"||it.status==="×")&&!(it.comment||"").trim())misses.push(`${cat.name} / ${it.name}：${it.status==="×"?"要対応":"経過観察"}コメント`);
  }));
  return [...new Set(misses)];
 }
@@ -567,7 +532,7 @@ async function buildMonthlyCanvases(m){
  if(owner){y+=25;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("管理会社コメント",70,y);y+=38;x.fillStyle="#344054";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,owner,1060)){x.fillText(ln,80,y);y+=27}}
  y+=35;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("ご報告事項",70,y);y+=35;
  for(const it of allIssues.slice(0,8)){
-   x.fillStyle=it.last.status==="×"?"#a23b3b":"#a06a12";x.font="700 19px -apple-system, sans-serif";x.fillText(`${it.last.status} ${it.key}`,85,y);y+=26;
+   x.fillStyle=it.last.status==="×"?"#a23b3b":"#a06a12";x.font="700 24px -apple-system, sans-serif";x.fillText(`${it.last.status} ${it.key}`,85,y);y+=26;
    let tx=ownerMap[it.key]||it.last.comment||"";
    x.fillStyle="#475467";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,tx,1020).slice(0,2)){x.fillText(ln,105,y);y+=22}y+=15;if(y>1580)break
  }
@@ -582,7 +547,7 @@ async function buildMonthlyCanvases(m){
      ctx.fillStyle="#f3f6f9";ctx.fillRect(bx,by,bw,bh);
      try{let img=await loadImg(batch[k].ph.data),sc=Math.min(bw/img.width,bh/img.height),dw=img.width*sc,dh=img.height*sc;ctx.drawImage(img,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh)}catch(e){}
      ctx.fillStyle=batch[k].status==="×"?"#a23b3b":"#a06a12";ctx.font="700 18px -apple-system, sans-serif";ctx.fillText(`${batch[k].status} ${batch[k].key}`,bx,by+590);
-     ctx.fillStyle="#667085";ctx.font="500 17px -apple-system, sans-serif";ctx.fillText(batch[k].date,bx,by+615);
+     ctx.fillStyle="#667085";ctx.font="500 22px -apple-system, sans-serif";ctx.fillText(batch[k].date,bx,by+615);
      ctx.fillStyle="#344054";for(const ln of wrapCanvasText(ctx,batch[k].owner,bw).slice(0,3)){ctx.fillText(ln,bx,by+645);by+=20}
    }pages.push(pc)
  }
@@ -628,18 +593,18 @@ async function buildReportCanvases(){
    let y=topY, bx=colX[col];
    for(const cat of groups[col]){
      x.fillStyle="#eaf1f8";x.fillRect(bx,y,colW,34);
-     x.fillStyle="#18365b";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillStyle="#18365b";x.font="700 24px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      x.fillText(cat.name,bx+12,y+23); y+=38;
      for(const it of cat.items){
        let st=it.status||"未";
        let color=st==="○"?"#26734d":st==="△"?"#a06a12":st==="×"?"#a23b3b":"#667085";
        x.strokeStyle="#e5e9ef";x.beginPath();x.moveTo(bx,y+28);x.lineTo(bx+colW,y+28);x.stroke();
-       x.fillStyle=color;x.font="700 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-       x.fillText(st,bx+10,y+20);
-       x.fillStyle="#344054";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-       let name=it.name.length>22?it.name.slice(0,21)+"…":it.name;
-       x.fillText(name,bx+42,y+20);
-       y+=31;
+       x.fillStyle="#344054";x.font="600 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       let name=it.name.length>16?it.name.slice(0,15)+"…":it.name;
+       x.fillText(name,bx+12,y+29);
+       x.fillStyle=color;x.font="800 28px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillText(st,bx+colW-48,y+29);
+       y+=41;
      }
      if(cat.comment){
        x.fillStyle="#667085";x.font="500 14px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
@@ -654,7 +619,7 @@ async function buildReportCanvases(){
  let issues=[];
  draft.categories.forEach(cat=>cat.items.forEach(it=>{
    if(it.status==="×"||it.status==="△"){
-     let comment=(it.photos||[]).map(p=>p.comment).filter(Boolean)[0]||cat.comment||"";
+     let comment=it.comment||cat.comment||"";
      issues.push({category:cat.name,item:it.name,status:it.status,comment});
    }
  }));
@@ -668,7 +633,7 @@ async function buildReportCanvases(){
    x.fillStyle="#eef8f2";x.fillRect(70,y,1100,76);
    x.fillStyle="#26734d";x.font="700 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
    x.fillText("○ 指摘事項なし",92,y+31);
-   x.fillStyle="#475467";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+   x.fillStyle="#475467";x.font="500 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
    x.fillText("全点検項目は良好または対象外です。",92,y+58);y+=94;
  }else{
    for(const it of issues.slice(0,4)){
@@ -676,12 +641,12 @@ async function buildReportCanvases(){
      const cardH=it.comment?104:78;
      x.fillStyle=isBad?"#fff1f1":"#fff8e8";x.fillRect(70,y,1100,cardH);
      x.fillStyle=isBad?"#a23b3b":"#a06a12";x.fillRect(70,y,12,cardH);
-     x.font="800 21px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.font="800 26px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      x.fillText(isBad?"× 要対応":"△ 経過観察",100,y+31);
-     x.fillStyle="#1d2939";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillStyle="#1d2939";x.font="700 24px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      x.fillText(`${it.category}　｜　${it.item}`,270,y+31);
      if(it.comment){
-       x.fillStyle="#475467";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillStyle="#475467";x.font="500 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
        let ls=wrapCanvasText(x,it.comment,1010).slice(0,2);
        let cy=y+62;
        ls.forEach(ln=>{x.fillText(ln,100,cy);cy+=23});
@@ -775,7 +740,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.4");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.5");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -785,7 +750,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.4: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.7.5: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
