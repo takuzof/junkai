@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.3</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.3</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.4</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.4</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -143,7 +143,7 @@ function sections(id){["home","properties","monthly","addProperty","inspection",
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.7.3");
+ title("巡回点検","iPhone・iPad 現場点検 V1.7.4");
  updateHome();
  scrollTo(0,0);
 }
@@ -557,10 +557,10 @@ async function buildMonthlyCanvases(m){
  let owner=document.getElementById("monthlyOwnerComment")?.value||"";
  const make=()=>{let c=document.createElement("canvas");c.width=1240;c.height=1754;let x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,1240,1754);return [c,x]};
  let [c,x]=make();x.fillStyle="#18365b";x.fillRect(0,0,1240,120);x.fillStyle="#fff";x.font="700 34px -apple-system, sans-serif";x.fillText("月次管理報告書",70,75);
- x.fillStyle="#1d2939";x.font="700 32px -apple-system, sans-serif";x.fillText(m.p.name,70,185);
+ x.fillStyle="#1d2939";x.font="700 38px -apple-system, sans-serif";x.fillText(m.p.name,70,185);
  x.fillStyle="#667085";x.font="500 21px -apple-system, sans-serif";x.fillText(`${m.ym.replace("-","年")}月　巡回 ${m.rs.length}回`,70,225);
- let y=285;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("今月の巡回概要",70,y);y+=40;
- x.fillStyle="#f3f6f9";x.fillRect(70,y-25,1100,70);x.font="700 22px -apple-system, sans-serif";
+ let y=285;x.fillStyle="#18365b";x.font="700 27px -apple-system, sans-serif";x.fillText("今月の巡回概要",70,y);y+=40;
+ x.fillStyle="#f3f6f9";x.fillRect(70,y-25,1100,70);x.font="700 25px -apple-system, sans-serif";
  x.fillStyle="#26734d";x.fillText(`○ ${m.sm.counts["○"]}`,105,y+18);x.fillStyle="#a06a12";x.fillText(`△ ${m.sm.counts["△"]}`,330,y+18);x.fillStyle="#a23b3b";x.fillText(`× ${m.sm.counts["×"]}`,555,y+18);x.fillStyle="#667085";x.fillText(`－ ${m.sm.counts["－"]}`,780,y+18);
  y+=90;x.fillStyle="#18365b";x.font="700 24px -apple-system, sans-serif";x.fillText("月間まとめ",70,y);y+=38;
  x.fillStyle="#344054";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,summary,1060)){x.fillText(ln,80,y);y+=27;if(y>700)break}
@@ -569,20 +569,20 @@ async function buildMonthlyCanvases(m){
  for(const it of allIssues.slice(0,8)){
    x.fillStyle=it.last.status==="×"?"#a23b3b":"#a06a12";x.font="700 19px -apple-system, sans-serif";x.fillText(`${it.last.status} ${it.key}`,85,y);y+=26;
    let tx=ownerMap[it.key]||it.last.comment||"";
-   x.fillStyle="#475467";x.font="500 16px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,tx,1020).slice(0,2)){x.fillText(ln,105,y);y+=22}y+=15;if(y>1580)break
+   x.fillStyle="#475467";x.font="500 18px -apple-system, sans-serif";for(const ln of wrapCanvasText(x,tx,1020).slice(0,2)){x.fillText(ln,105,y);y+=22}y+=15;if(y>1580)break
  }
  pages.push(c);
  // Photo pages: latest issue photos, x then triangle, up to 4/page for owner readability
  let pics=[];allIssues.forEach(it=>{let chosen=[...it.arr].reverse().find(a=>(a.photos||[]).length);if(chosen)chosen.photos.slice(0,2).forEach(ph=>pics.push({key:it.key,status:chosen.status,date:chosen.date,ph,owner:ownerMap[it.key]||chosen.comment||""}))});
  for(let n=0;n<pics.length;n+=4){
-   let [pc,ctx]=make();ctx.fillStyle="#18365b";ctx.fillRect(0,0,1240,120);ctx.fillStyle="#fff";ctx.font="700 32px -apple-system, sans-serif";ctx.fillText("月次管理報告書　点検写真",70,75);
+   let [pc,ctx]=make();ctx.fillStyle="#18365b";ctx.fillRect(0,0,1240,120);ctx.fillStyle="#fff";ctx.font="700 38px -apple-system, sans-serif";ctx.fillText("月次管理報告書　点検写真",70,75);
    let batch=pics.slice(n,n+4);
    for(let k=0;k<batch.length;k++){
      let col=k%2,row=Math.floor(k/2),bx=70+col*550,by=170+row*760,bw=510,bh=560;
      ctx.fillStyle="#f3f6f9";ctx.fillRect(bx,by,bw,bh);
      try{let img=await loadImg(batch[k].ph.data),sc=Math.min(bw/img.width,bh/img.height),dw=img.width*sc,dh=img.height*sc;ctx.drawImage(img,bx+(bw-dw)/2,by+(bh-dh)/2,dw,dh)}catch(e){}
      ctx.fillStyle=batch[k].status==="×"?"#a23b3b":"#a06a12";ctx.font="700 18px -apple-system, sans-serif";ctx.fillText(`${batch[k].status} ${batch[k].key}`,bx,by+590);
-     ctx.fillStyle="#667085";ctx.font="500 15px -apple-system, sans-serif";ctx.fillText(batch[k].date,bx,by+615);
+     ctx.fillStyle="#667085";ctx.font="500 17px -apple-system, sans-serif";ctx.fillText(batch[k].date,bx,by+615);
      ctx.fillStyle="#344054";for(const ln of wrapCanvasText(ctx,batch[k].owner,bw).slice(0,3)){ctx.fillText(ln,bx,by+645);by+=20}
    }pages.push(pc)
  }
@@ -595,11 +595,15 @@ async function buildReportCanvases(){
  x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);drawCoverHeader(x,1,total);
 
  // Property header
- x.fillStyle="#1d2939";x.font="700 32px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- x.fillText(draft.property.name,70,180);
- x.fillStyle="#667085";x.font="500 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- x.fillText(`巡回日：${draft.date}`,70,220);
- x.fillText(`住所：${draft.property.address||"未登録"}`,350,220);
+ x.fillStyle="#1d2939";x.font="700 38px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText(draft.property.name,70,178);
+ x.fillStyle="#18365b";x.font="700 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("点検日",70,218);
+ x.fillStyle="#eef4fa";x.fillRect(150,190,300,48);
+ x.fillStyle="#18365b";x.font="800 28px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText(draft.date,170,224);
+ x.fillStyle="#667085";x.font="500 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText(`住所：${draft.property.address||"未登録"}`,480,221);
 
  // Status summary
  let sc=statusCounts();
@@ -610,7 +614,7 @@ async function buildReportCanvases(){
    ["×","要対応",sc["×"]||0,"#a23b3b",650],
    ["－","対象外",sc["－"]||0,"#667085",930]
  ];
- x.font="700 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
  sums.forEach(v=>{x.fillStyle=v[3];x.fillText(`${v[0]} ${v[1]} ${v[2]}件`,v[4],303)});
 
  // Full inspection list: includes ○ good items
@@ -624,21 +628,21 @@ async function buildReportCanvases(){
    let y=topY, bx=colX[col];
    for(const cat of groups[col]){
      x.fillStyle="#eaf1f8";x.fillRect(bx,y,colW,34);
-     x.fillStyle="#18365b";x.font="700 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillStyle="#18365b";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      x.fillText(cat.name,bx+12,y+23); y+=38;
      for(const it of cat.items){
        let st=it.status||"未";
        let color=st==="○"?"#26734d":st==="△"?"#a06a12":st==="×"?"#a23b3b":"#667085";
        x.strokeStyle="#e5e9ef";x.beginPath();x.moveTo(bx,y+28);x.lineTo(bx+colW,y+28);x.stroke();
-       x.fillStyle=color;x.font="700 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillStyle=color;x.font="700 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
        x.fillText(st,bx+10,y+20);
-       x.fillStyle="#344054";x.font="500 15px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillStyle="#344054";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
        let name=it.name.length>22?it.name.slice(0,21)+"…":it.name;
        x.fillText(name,bx+42,y+20);
        y+=31;
      }
      if(cat.comment){
-       x.fillStyle="#667085";x.font="500 12px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillStyle="#667085";x.font="500 14px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
        let lines=wrapCanvasText(x,"コメント："+cat.comment,colW-24).slice(0,2);
        lines.forEach(ln=>{x.fillText(ln,bx+12,y+14);y+=17});
      }
@@ -646,7 +650,7 @@ async function buildReportCanvases(){
    }
  }
 
- // Highlight issue details compactly
+ // Highlight issues as large, readable cards
  let issues=[];
  draft.categories.forEach(cat=>cat.items.forEach(it=>{
    if(it.status==="×"||it.status==="△"){
@@ -654,32 +658,45 @@ async function buildReportCanvases(){
      issues.push({category:cat.name,item:it.name,status:it.status,comment});
    }
  }));
- let y=1180;
- x.fillStyle="#18365b";x.font="700 23px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- x.fillText("指摘・経過観察事項",70,y);y+=32;
+ let y=1165;
+ x.fillStyle="#18365b";x.font="800 28px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("指摘・経過観察事項",70,y);y+=20;
+ x.fillStyle="#667085";x.font="500 15px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("対応が必要な箇所・継続して確認する箇所",70,y+22);y+=48;
+
  if(!issues.length){
-   x.fillStyle="#26734d";x.font="600 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-   x.fillText("指摘事項はありません。全点検項目は良好または対象外です。",82,y);y+=32;
+   x.fillStyle="#eef8f2";x.fillRect(70,y,1100,76);
+   x.fillStyle="#26734d";x.font="700 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+   x.fillText("○ 指摘事項なし",92,y+31);
+   x.fillStyle="#475467";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+   x.fillText("全点検項目は良好または対象外です。",92,y+58);y+=94;
  }else{
-   for(const it of issues.slice(0,6)){
-     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";
-     x.font="700 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-     x.fillText(`${it.status} ${it.category} / ${it.item}`,82,y);
+   for(const it of issues.slice(0,4)){
+     const isBad=it.status==="×";
+     const cardH=it.comment?104:78;
+     x.fillStyle=isBad?"#fff1f1":"#fff8e8";x.fillRect(70,y,1100,cardH);
+     x.fillStyle=isBad?"#a23b3b":"#a06a12";x.fillRect(70,y,12,cardH);
+     x.font="800 21px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillText(isBad?"× 要対応":"△ 経過観察",100,y+31);
+     x.fillStyle="#1d2939";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillText(`${it.category}　｜　${it.item}`,270,y+31);
      if(it.comment){
-       x.fillStyle="#475467";x.font="500 14px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-       x.fillText(wrapCanvasText(x,it.comment,940)[0]||"",115,y+21); y+=48;
-     }else y+=27;
-     if(y>1450) break;
+       x.fillStyle="#475467";x.font="500 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       let ls=wrapCanvasText(x,it.comment,1010).slice(0,2);
+       let cy=y+62;
+       ls.forEach(ln=>{x.fillText(ln,100,cy);cy+=23});
+     }
+     y+=cardH+12;
+     if(y>1540) break;
    }
  }
-
  // Overall comment box
- let boxY=Math.max(1490,y+15);
- if(boxY>1580) boxY=1580;
- x.fillStyle="#18365b";x.font="700 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ let boxY=Math.max(1500,y+12);
+ if(boxY>1590) boxY=1590;
+ x.fillStyle="#18365b";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
  x.fillText("総合コメント",70,boxY);
  x.fillStyle="#f7f9fb";x.fillRect(70,boxY+18,1100,110);
- x.fillStyle="#344054";x.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillStyle="#344054";x.font="500 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
  let oy=boxY+48;
  for(const ln of wrapCanvasText(x,draft.overall||"特記事項なし",1050).slice(0,3)){x.fillText(ln,90,oy);oy+=24}
  pages.push(c);
@@ -702,7 +719,7 @@ async function buildReportCanvases(){
      ctx.fillStyle=batch[k].status==="×"?"#a23b3b":batch[k].status==="△"?"#a06a12":"#18365b";
      ctx.font="700 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      ctx.fillText(`${batch[k].status}  ${batch[k].category} / ${batch[k].item}`,bx,by+imageH+28);
-     ctx.fillStyle="#475467";ctx.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     ctx.fillStyle="#475467";ctx.font="500 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
      let lines=wrapCanvasText(ctx,batch[k].comment||"コメントなし",bw);
      lines.slice(0,2).forEach((ln,z)=>ctx.fillText(ln,bx,by+imageH+54+z*21));
    }
@@ -758,7 +775,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.3");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.4");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -768,7 +785,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.3: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.7.4: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
