@@ -52,6 +52,8 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
   .item{padding:16px 18px}
   textarea{min-height:92px}
 }
+.home-nav{display:flex;justify-content:flex-end;margin-bottom:10px}
+.home-btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:11px;padding:9px 13px;font-weight:800;font-size:13px}
 .required-note{font-size:12px;font-weight:800;color:#a23b3b;margin-top:6px}
 .month-card{border:1px solid #d8e0e8;border-radius:16px;padding:15px;margin:10px 0;background:#fff}
 .month-card h3{margin:0 0 7px;color:#18365b}
@@ -61,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.2</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.2</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.3</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.3</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -77,6 +79,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </section>
 
 <section id="properties" class="hidden">
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <div class="card searchbox"><input id="propertySearch" placeholder="物件名・住所で検索" oninput="renderProperties(this.value)"></div>
  <div class="list-title">登録済み物件</div>
  <div id="propertyList"></div>
@@ -86,7 +89,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 
 
 <section id="monthly" class="hidden">
- <button class="back" onclick="refreshHome()">← 戻る</button>
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <h1>月次管理報告書</h1>
  <p class="sub">保存された巡回履歴から、オーナー様向けの月次報告書を作成します。</p>
  <div class="card">
@@ -97,16 +100,19 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
  <div id="monthlyResult"></div>
 </section>
 <section id="addProperty" class="hidden">
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <div class="card"><label>物件名</label><input id="propName" placeholder="例：サンライズマンション"><label>住所</label><input id="propAddress" placeholder="例：東京都品川区…"><label>管理メモ（任意）</label><textarea id="propMemo" placeholder="巡回時の注意事項など"></textarea></div>
  <button class="primary" onclick="saveProperty()">この物件を登録</button>
 </section>
 
 <section id="inspection" class="hidden">
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <div class="card"><div class="property"><div><b id="insProp"></b><small id="insDate"></small></div><span class="badge" id="catCounter"></span></div><div class="progress"><i id="progressBar"></i></div></div>
  <div id="categoryCard"></div>
 </section>
 
 <section id="summary" class="hidden">
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <div class="card"><h2 style="margin-top:0">巡回内容の確認</h2><div id="completionWarning"></div><div id="summaryBody"></div></div>
  <div class="card"><label>総合コメント</label><textarea id="overall" placeholder="今回の巡回についての総合コメント"></textarea></div>
  <button class="primary" id="pdfShareBtn" onclick="validatedSharePDF()">PDFを作成して会社へ送る</button>
@@ -133,7 +139,15 @@ const CATEGORIES=[
 ];
 const STATUS=["○","△","×","－"];
 let current=0, draft=null, editingPropertyId=null;
-function sections(id){["home","properties","addProperty","inspection","summary"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));document.getElementById("footer").classList.toggle("hidden",id!=="inspection")}
+function sections(id){["home","properties","monthly","addProperty","inspection","summary"].forEach(x=>document.getElementById(x)?.classList.toggle("hidden",x!==id));document.getElementById("footer").classList.toggle("hidden",id!=="inspection")}
+function goHome(){
+ if(draft) saveDraft();
+ sections("home");
+ title("巡回点検","iPhone・iPad 現場点検 V1.7.3");
+ updateHome();
+ scrollTo(0,0);
+}
+function refreshHome(){goHome()}
 function title(t,s=""){document.getElementById("pageTitle").textContent=t;document.getElementById("pageSub").textContent=s}
 function props(){return JSON.parse(localStorage.getItem("inspection_properties")||"[]")}
 function showProperties(){sections("properties");title("物件を選択","巡回する物件を選んでください");renderProperties()}
@@ -577,43 +591,98 @@ async function buildMonthlyCanvases(m){
 async function buildReportCanvases(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";saveDraft();
  const photos=collectReportPhotos(), photoPages=Math.ceil(photos.length/6), total=1+photoPages, pages=[];
- const issues=[];
- draft.categories.forEach(c=>c.items.forEach(i=>{if(i.status==="×"||i.status==="△")issues.push({category:c.name,item:i.name,status:i.status,comment:(i.photos||[]).map(p=>p.comment).filter(Boolean)[0]||c.comment||""})}));
  let c=document.createElement("canvas");c.width=1240;c.height=1754;let x=c.getContext("2d");
  x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);drawCoverHeader(x,1,total);
- x.fillStyle="#1d2939";x.font="700 34px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(draft.property.name,70,185);
- x.font="500 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillStyle="#667085";
- x.fillText(`巡回日：${draft.date}`,70,230);x.fillText(`住所：${draft.property.address||"未登録"}`,70,267);
- let sc=statusCounts();x.fillStyle="#f3f6f9";x.fillRect(70,305,1100,90);
- x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- [["○",105,"#26734d","良好"],["△",350,"#a06a12","経過観察"],["×",650,"#a23b3b","要対応"],["未",930,"#667085","未点検"]].forEach(v=>{x.fillStyle=v[2];x.fillText(`${v[0]} ${v[3]} ${sc[v[0]]||0}件`,v[1],360)});
- let y=445;
- x.fillStyle="#18365b";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("指摘事項",70,y);y+=30;
- if(!issues.length){x.fillStyle="#26734d";x.font="600 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("△・×の指摘事項はありません",85,y);y+=38}
- else{
-   for(const it of issues.slice(0,10)){
-     x.fillStyle=it.status==="×"?"#fff0f0":"#fff7e8";x.fillRect(75,y-20,1085,it.comment?64:42);
-     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";x.font="700 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
-     x.fillText(`${it.status}  ${it.category} / ${it.item}`,90,y);
-     if(it.comment){x.fillStyle="#475467";x.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(wrapCanvasText(x,it.comment,980)[0]||"",105,y+25);y+=68}else y+=48;
-   }
- }
- y+=8;x.fillStyle="#18365b";x.font="700 25px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("点検結果",70,y);y+=30;
- for(const cat of draft.categories){
-   let answered=cat.items.filter(i=>i.status).length,bad=cat.items.filter(i=>i.status==="×").length,warn=cat.items.filter(i=>i.status==="△").length;
-   x.strokeStyle="#d8e0e8";x.beginPath();x.moveTo(70,y);x.lineTo(1170,y);x.stroke();y+=28;
-   x.fillStyle="#18365b";x.font="700 20px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(cat.name,80,y);
-   x.textAlign="right";x.fillStyle="#667085";x.font="600 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(`入力 ${answered}/${cat.items.length}${bad?`  ×${bad}`:""}${warn?`  △${warn}`:""}`,1160,y);x.textAlign="left";y+=25;
-   for(const it of cat.items.filter(i=>i.status==="×"||i.status==="△")){
-     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";x.font="600 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText(`${it.status} ${it.name}`,100,y);y+=21;
-   }
-   y+=10;if(y>1460)break;
- }
- x.fillStyle="#18365b";x.font="700 23px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";x.fillText("総合コメント",70,1570);
- x.fillStyle="#344054";x.font="500 18px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
- let oy=1610;for(const ln of wrapCanvasText(x,draft.overall||"特記事項なし",1080).slice(0,4)){x.fillText(ln,80,oy);oy+=25}
- pages.push(c);
 
+ // Property header
+ x.fillStyle="#1d2939";x.font="700 32px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText(draft.property.name,70,180);
+ x.fillStyle="#667085";x.font="500 19px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText(`巡回日：${draft.date}`,70,220);
+ x.fillText(`住所：${draft.property.address||"未登録"}`,350,220);
+
+ // Status summary
+ let sc=statusCounts();
+ x.fillStyle="#f3f6f9";x.fillRect(70,250,1100,88);
+ const sums=[
+   ["○","良好",sc["○"]||0,"#26734d",105],
+   ["△","経過観察",sc["△"]||0,"#a06a12",350],
+   ["×","要対応",sc["×"]||0,"#a23b3b",650],
+   ["－","対象外",sc["－"]||0,"#667085",930]
+ ];
+ x.font="700 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ sums.forEach(v=>{x.fillStyle=v[3];x.fillText(`${v[0]} ${v[1]} ${v[2]}件`,v[4],303)});
+
+ // Full inspection list: includes ○ good items
+ x.fillStyle="#18365b";x.font="700 24px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("点検結果一覧",70,390);
+
+ const colX=[70,635], colW=535, topY=425;
+ const half=Math.ceil(draft.categories.length/2);
+ const groups=[draft.categories.slice(0,half),draft.categories.slice(half)];
+ for(let col=0;col<2;col++){
+   let y=topY, bx=colX[col];
+   for(const cat of groups[col]){
+     x.fillStyle="#eaf1f8";x.fillRect(bx,y,colW,34);
+     x.fillStyle="#18365b";x.font="700 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillText(cat.name,bx+12,y+23); y+=38;
+     for(const it of cat.items){
+       let st=it.status||"未";
+       let color=st==="○"?"#26734d":st==="△"?"#a06a12":st==="×"?"#a23b3b":"#667085";
+       x.strokeStyle="#e5e9ef";x.beginPath();x.moveTo(bx,y+28);x.lineTo(bx+colW,y+28);x.stroke();
+       x.fillStyle=color;x.font="700 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillText(st,bx+10,y+20);
+       x.fillStyle="#344054";x.font="500 15px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       let name=it.name.length>22?it.name.slice(0,21)+"…":it.name;
+       x.fillText(name,bx+42,y+20);
+       y+=31;
+     }
+     if(cat.comment){
+       x.fillStyle="#667085";x.font="500 12px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       let lines=wrapCanvasText(x,"コメント："+cat.comment,colW-24).slice(0,2);
+       lines.forEach(ln=>{x.fillText(ln,bx+12,y+14);y+=17});
+     }
+     y+=10;
+   }
+ }
+
+ // Highlight issue details compactly
+ let issues=[];
+ draft.categories.forEach(cat=>cat.items.forEach(it=>{
+   if(it.status==="×"||it.status==="△"){
+     let comment=(it.photos||[]).map(p=>p.comment).filter(Boolean)[0]||cat.comment||"";
+     issues.push({category:cat.name,item:it.name,status:it.status,comment});
+   }
+ }));
+ let y=1180;
+ x.fillStyle="#18365b";x.font="700 23px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("指摘・経過観察事項",70,y);y+=32;
+ if(!issues.length){
+   x.fillStyle="#26734d";x.font="600 17px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+   x.fillText("指摘事項はありません。全点検項目は良好または対象外です。",82,y);y+=32;
+ }else{
+   for(const it of issues.slice(0,6)){
+     x.fillStyle=it.status==="×"?"#a23b3b":"#a06a12";
+     x.font="700 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+     x.fillText(`${it.status} ${it.category} / ${it.item}`,82,y);
+     if(it.comment){
+       x.fillStyle="#475467";x.font="500 14px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+       x.fillText(wrapCanvasText(x,it.comment,940)[0]||"",115,y+21); y+=48;
+     }else y+=27;
+     if(y>1450) break;
+   }
+ }
+
+ // Overall comment box
+ let boxY=Math.max(1490,y+15);
+ if(boxY>1580) boxY=1580;
+ x.fillStyle="#18365b";x.font="700 22px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ x.fillText("総合コメント",70,boxY);
+ x.fillStyle="#f7f9fb";x.fillRect(70,boxY+18,1100,110);
+ x.fillStyle="#344054";x.font="500 16px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
+ let oy=boxY+48;
+ for(const ln of wrapCanvasText(x,draft.overall||"特記事項なし",1050).slice(0,3)){x.fillText(ln,90,oy);oy+=24}
+ pages.push(c);
  for(let pg=0;pg<photoPages;pg++){
    let pc=document.createElement("canvas");pc.width=1240;pc.height=1754;let ctx=pc.getContext("2d");
    ctx.fillStyle="#fff";ctx.fillRect(0,0,pc.width,pc.height);drawCoverHeader(ctx,pg+2,total);
@@ -689,7 +758,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.2");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.3");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -699,7 +768,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.2: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.7.3: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
