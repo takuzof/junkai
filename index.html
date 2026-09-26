@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.5</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.5</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.6</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.6</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -143,7 +143,7 @@ function sections(id){["home","properties","monthly","addProperty","inspection",
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.7.5");
+ title("巡回点検","iPhone・iPad 現場点検 V1.7.6");
  updateHome();
  scrollTo(0,0);
 }
@@ -419,7 +419,7 @@ function snapshotDraft(){
   id:"h_"+Date.now(), property:{...draft.property}, date:draft.date,
   overall:draft.overall||"", savedAt:new Date().toISOString(),
   categories:draft.categories.map(c=>({name:c.name,comment:c.comment||"",items:c.items.map(i=>({
-    name:i.name,status:i.status||"",photos:(i.photos||[]).map(p=>({data:p.data,comment:p.comment||""}))
+    name:i.name,status:i.status||"",comment:i.comment||"",photos:(i.photos||[]).map(p=>({data:p.data,comment:p.comment||""}))
   }))}))
  };
 }
@@ -434,7 +434,7 @@ function validateAndSaveInspection(){
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";
  let misses=validateRequired();
  if(misses.length){
-   alert("要対応（×）は写真必須、また写真を添付した場合は写真ごとのコメントが必須です。\n\n不足している項目：\n"+misses.join("\n"));
+   alert("△・×は項目コメント必須、×は写真も必須です。\n\n不足している項目：\n"+misses.join("\n"));
    return false;
  }
  saveDraft();
@@ -447,9 +447,25 @@ async function validatedSharePDF(){
  await createAndSharePDF();
 }
 async function validatedPreviewPDF(){
- if(!requirePhotoCommentBeforeNext()) return;
  if(!draft||!validateAndSaveInspection())return;
- await previewPDF();
+
+ // iPhone/Safariのポップアップ制限対策：
+ // タップ直後に確認画面を確保し、その後PDFを生成する。
+ let previewWin=window.open("","_blank");
+ if(!previewWin){
+   alert("PDF確認画面を開けませんでした。Safariのポップアップ設定をご確認ください。");
+   return;
+ }
+ previewWin.document.write('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>PDF作成中</title><body style="font-family:-apple-system,sans-serif;padding:30px;text-align:center"><h2>PDFを作成しています…</h2><p>この画面はそのままお待ちください。</p></body>');
+ try{
+   let blob=await createPDFBlob();
+   let url=URL.createObjectURL(blob);
+   previewWin.location.href=url;
+   setTimeout(()=>URL.revokeObjectURL(url),180000);
+ }catch(e){
+   try{previewWin.close()}catch(_){}
+   alert("PDFを作成できませんでした。");
+ }
 }
 function showMonthly(){
  sections("monthly"); title("月次報告書","オーナー様向け");
@@ -736,11 +752,19 @@ async function createAndSharePDF(){
  }catch(e){if(e&&e.name!=="AbortError")alert("PDFの作成または共有に失敗しました。写真枚数を減らして再度お試しください。")}
 }
 async function previewPDF(){
- try{let blob=await createPDFBlob(),url=URL.createObjectURL(blob);window.open(url,"_blank");setTimeout(()=>URL.revokeObjectURL(url),120000)}
- catch(e){alert("PDFを作成できませんでした。")}
+ let w=window.open("","_blank");
+ if(!w){alert("PDF確認画面を開けませんでした。");return;}
+ try{
+   let blob=await createPDFBlob(),url=URL.createObjectURL(blob);
+   w.location.href=url;
+   setTimeout(()=>URL.revokeObjectURL(url),180000);
+ }catch(e){
+   try{w.close()}catch(_){}
+   alert("PDFを作成できませんでした。");
+ }
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.5");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.6");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -750,7 +774,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.5: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.7.6: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
