@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.8.2</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.8.2</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.8.3</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.8.3</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -151,7 +151,7 @@ function sections(id){["home","properties","savedHistory","monthly","addProperty
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.8.2");
+ title("巡回点検","iPhone・iPad 現場点検 V1.8.3");
  updateHome();
  scrollTo(0,0);
 }
@@ -510,6 +510,7 @@ async function validatedPreviewPDF(){
    alert("PDFを作成できませんでした。");
  }
 }
+let currentMonthlyRecords=[];
 async function showMonthly(){
  sections("monthly"); title("月次報告書","オーナー様向け");
  monthlyResult.innerHTML='<div class="card sub">保存済み履歴を読み込んでいます…</div>';
@@ -571,7 +572,7 @@ function summarizeMonthly(rs){
 async function buildMonthlyView(){
  let pid=monthProperty.value,ym=monthValue.value;
  monthlyResult.innerHTML='<div class="card sub">巡回履歴を集約しています…</div>';
- let rs=await monthRecords(pid,ym);
+ let rs=await monthRecords(pid,ym); currentMonthlyRecords=rs;
  if(!rs.length){monthlyResult.innerHTML='<div class="card">この月の保存済み巡回記録はありません。</div>';return}
  let p={...(rs[0]?.property||{})}, sm=summarizeMonthly(rs);
  let issueHtml="";
@@ -816,7 +817,7 @@ async function previewPDF(){
  }
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.8.2");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.8.3");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -826,7 +827,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.8.2: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.8.3: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
