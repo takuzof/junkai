@@ -1,40 +1,51 @@
-const CACHE="junkai-v187";
-const ASSETS=["./index.html","./manifest.webmanifest","./icon.svg"];
+const CACHE="junkai-v189";
+const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 
-self.addEventListener("install", event => {
+self.addEventListener("install",event=>{
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
+self.addEventListener("activate",event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
 
-self.addEventListener("fetch", event => {
-  const req = event.request;
-  if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req)
-        .then(res => {
-          const copy=res.clone();
-          caches.open(CACHE).then(cache => cache.put("./index.html", copy));
-          return res;
-        })
-        .catch(() => caches.match("./index.html"))
-    );
+self.addEventListener("message",event=>{
+  if(event.data==="SKIP_WAITING") self.skipWaiting();
+});
+
+self.addEventListener("fetch",event=>{
+  if(event.request.method!=="GET") return;
+  const url=new URL(event.request.url);
+
+  // Always prefer the network for app navigation/HTML so a new version is seen immediately.
+  if(event.request.mode==="navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("/index.html")){
+    event.respondWith((async()=>{
+      try{
+        const fresh=await fetch(event.request,{cache:"no-store"});
+        const cache=await caches.open(CACHE);
+        cache.put("./index.html",fresh.clone());
+        return fresh;
+      }catch(e){
+        return (await caches.match("./index.html")) || (await caches.match("./"));
+      }
+    })());
     return;
   }
-  event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(res => {
-      if (req.method === "GET" && new URL(req.url).origin === self.location.origin) {
-        const copy=res.clone();
-        caches.open(CACHE).then(cache => cache.put(req, copy));
-      }
-      return res;
-    }))
-  );
+
+  // Static assets: refresh from network when possible, retain offline fallback.
+  event.respondWith((async()=>{
+    try{
+      const fresh=await fetch(event.request,{cache:"no-store"});
+      const cache=await caches.open(CACHE);
+      cache.put(event.request,fresh.clone());
+      return fresh;
+    }catch(e){
+      return caches.match(event.request);
+    }
+  })());
 });
