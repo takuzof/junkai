@@ -496,22 +496,10 @@ async function saveCurrentInspection(){
  await saveHistoryRecord(snap);return snap;
 }
 async function saveInspectionDataOnly(){
- try{
-  if(!validateRequired())return;
-  if(overall)draft.overall=overall.value||"";
-  saveDraft();
-  let snap=snapshotDraft();
-  // Same property/date: replace existing record instead of creating duplicates.
-  let existing=await getAllHistories();
-  let same=existing.filter(h=>String(h.property?.id||h.property?.name)===String(snap.property?.id||snap.property?.name)&&normalizeHistoryDate(h.date)===normalizeHistoryDate(snap.date));
-  if(same.length){snap.id=same[0].id}
-  await putHistory(snap);
-  alert("点検データを保存しました。\n月次報告書に使用できます。");
-  renderHome();
- }catch(e){
-  console.error(e);
-  alert("点検データを保存できませんでした。\n"+(e?.message||String(e)));
- }
+ if(!draft)return;
+ if(!(await validateAndSaveInspection()))return;
+ alert("点検データを保存しました。\n保存済み巡回履歴・月次報告書に使用できます。");
+ goHome();
 }
 async function validateAndSaveInspection(){
  if(!requirePhotoCommentBeforeNext()) return false;
