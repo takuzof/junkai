@@ -63,7 +63,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.8</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.8</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.8.0</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.8.0</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -71,6 +71,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
  <div class="card"><div class="property"><div><b>物件登録</b><small>登録は最初の1回だけ。次回から一覧から選べます。</small></div><span class="pill">繰り返し利用</span></div></div>
  <button class="secondary" onclick="showAddProperty()">＋ 物件を登録</button>
  <button class="primary" style="margin-top:10px" onclick="showMonthly()">月次報告書を作る</button>
+ <button class="secondary" style="margin-top:10px" onclick="showSavedHistory()">保存済み巡回履歴</button>
  <div class="card" style="margin-top:13px">
   <b>物件マスター</b><p class="sub">物件一覧だけを別のiPhoneへ移せます。巡回結果や写真は含みません。</p>
   <div class="row"><button class="secondary" onclick="exportProperties()">書き出す</button><button class="secondary" onclick="document.getElementById('propertyImport').click()">読み込む</button></div>
@@ -87,6 +88,14 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
  <p class="notice">物件登録は初回のみ。次回以降は一覧から選択できます。</p>
 </section>
 
+
+<section id="savedHistory" class="hidden">
+ <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
+ <h1>保存済み巡回履歴</h1>
+ <p class="sub">このiPhone・iPad内に保存されている巡回記録です。月次報告書はこの履歴から作成します。</p>
+ <div class="card"><label>物件</label><select id="historyProperty" onchange="renderSavedHistory()"></select></div>
+ <div id="savedHistoryList"></div>
+</section>
 
 <section id="monthly" class="hidden">
  <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
@@ -129,20 +138,20 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 <script>
 const CATEGORIES=[
  {name:"建物外周",desc:"建物の外周・外観を確認",items:["外壁・ひび割れ・破損","建物周囲の清掃状況","放置物・不法投棄","雨樋・排水まわり"]},
- {name:"エントランス",desc:"入口・ポスト・掲示板等を確認",items:["入口扉・オートロック","集合ポスト","掲示板・掲示物","床・壁・清掃状況"]},
+ {name:"エントランス",desc:"入口・ポスト・掲示板等を確認",items:["入口扉・オートロック","集合ポスト・宅配ボックス","掲示板・掲示物","床・壁・清掃状況"]},
  {name:"共用廊下・階段",desc:"共用廊下・階段を確認",items:["廊下・階段の清掃","手すり・床・壁の破損","私物・放置物","共用灯"]},
  {name:"ゴミ置場",desc:"ゴミ置場の状態を確認",items:["分別状況","収集日以外のごみ","粗大ごみ・不法投棄","清掃・臭気"]},
- {name:"駐輪場",desc:"駐輪場の状態を確認",items:["放置自転車・車両","整理整頓","設備・照明"]},
+ {name:"駐輪場",desc:"駐輪場の状態を確認",items:["放置自転車","整理状況・ステッカー貼付","設備・照明"]},
  {name:"植栽・外構",desc:"植栽・外構の状態を確認",items:["植栽・雑草","フェンス・外構等"]},
- {name:"その他",desc:"その他の共用部・異常を確認",items:["漏水・水濡れ","異臭・異音","その他共用設備","その他"]}
+ {name:"その他",desc:"その他の共用部・異常を確認",items:["漏水・水濡れ","異臭・異音","その他共用設備"]}
 ];
 const STATUS=["○","△","×","－"];
 let current=0, draft=null, editingPropertyId=null;
-function sections(id){["home","properties","monthly","addProperty","inspection","summary"].forEach(x=>document.getElementById(x)?.classList.toggle("hidden",x!==id));document.getElementById("footer").classList.toggle("hidden",id!=="inspection")}
+function sections(id){["home","properties","savedHistory","monthly","addProperty","inspection","summary"].forEach(x=>document.getElementById(x)?.classList.toggle("hidden",x!==id));document.getElementById("footer").classList.toggle("hidden",id!=="inspection")}
 function goHome(){
  if(draft) saveDraft();
  sections("home");
- title("巡回点検","iPhone・iPad 現場点検 V1.7.8");
+ title("巡回点検","iPhone・iPad 現場点検 V1.8.0");
  updateHome();
  scrollTo(0,0);
 }
@@ -162,7 +171,7 @@ function saveProperty(){
  else p.push({id:crypto.randomUUID?crypto.randomUUID():Date.now().toString(),name:n,address:propAddress.value.trim(),memo:propMemo.value.trim()});
  localStorage.setItem("inspection_properties",JSON.stringify(p));editingPropertyId=null;showProperties();
 }
-function getHistoryForProperty(id){return JSON.parse(localStorage.getItem("inspection_history")||"[]").filter(h=>h.property&&h.property.id===id)}
+function getHistoryForProperty(id){return []} // V1.8: 履歴本体はIndexedDBで管理
 function previousStats(id){
  let h=getHistoryForProperty(id);if(!h.length)return {date:"未巡回",bad:0,warn:0};
  let last=h[0],bad=0,warn=0;(last.categories||[]).forEach(c=>(c.items||[]).forEach(i=>{if(i.status==="×")bad++;if(i.status==="△")warn++;}));
@@ -179,7 +188,7 @@ function deleteProperty(id){
  if(!confirm(`「${p.name}」を物件一覧から削除しますか？\n過去の巡回履歴は削除しません。`))return;
  localStorage.setItem("inspection_properties",JSON.stringify(props().filter(x=>x.id!==id)));renderProperties(document.getElementById("propertySearch")?.value||"");
 }
-function startInspection(id){let p=props().find(x=>x.id===id);draft={id:Date.now().toString(),property:p,date:new Date().toLocaleDateString("ja-JP"),categories:CATEGORIES.map(c=>({name:c.name,comment:"",items:c.items.map(i=>({name:i,status:"",photos:[]}))})),overall:""};current=0;saveDraft();sections("inspection");renderCategory()}
+function startInspection(id){let p=props().find(x=>x.id===id);draft={id:Date.now().toString(),property:p,date:(()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`})(),categories:CATEGORIES.map(c=>({name:c.name,comment:"",items:c.items.map(i=>({name:i,status:"",photos:[]}))})),overall:""};current=0;saveDraft();sections("inspection");renderCategory()}
 
 function moveCategory(delta){
   if(!requirePhotoCommentBeforeNext()) return;
@@ -400,8 +409,45 @@ function drawCoverHeader(ctx,pageNo,total){
 }
 
 const HISTORY_KEY="inspection_history_v16";
-function histories(){try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]")}catch(e){return[]}}
-function saveHistories(v){localStorage.setItem(HISTORY_KEY,JSON.stringify(v))}
+const DB_NAME="junkai_inspection_db", DB_VERSION=1, HISTORY_STORE="histories";
+let _dbPromise=null;
+function openJunkaiDB(){
+ if(_dbPromise)return _dbPromise;
+ _dbPromise=new Promise((resolve,reject)=>{
+  let req=indexedDB.open(DB_NAME,DB_VERSION);
+  req.onupgradeneeded=()=>{let db=req.result;if(!db.objectStoreNames.contains(HISTORY_STORE)){let st=db.createObjectStore(HISTORY_STORE,{keyPath:"id"});st.createIndex("propertyId","property.id",{unique:false});st.createIndex("date","date",{unique:false})}};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ });
+ return _dbPromise;
+}
+function normalizeHistoryDate(v){
+ let m=String(v||"").match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+ return m?`${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`:String(v||"");
+}
+async function migrateLegacyHistories(){
+ if(localStorage.getItem("history_idb_migrated_v18")==="1")return;
+ let legacy=[];try{legacy=JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]")}catch(e){}
+ if(legacy.length){
+  let db=await openJunkaiDB(),tx=db.transaction(HISTORY_STORE,"readwrite"),st=tx.objectStore(HISTORY_STORE);
+  legacy.forEach((h,n)=>{h.date=normalizeHistoryDate(h.date);h.id=h.id||("legacy_"+Date.now()+"_"+n);st.put(h)});
+  await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});
+ }
+ localStorage.setItem("history_idb_migrated_v18","1");
+}
+async function histories(){
+ await migrateLegacyHistories();
+ let db=await openJunkaiDB();
+ return await new Promise((resolve,reject)=>{let r=db.transaction(HISTORY_STORE,"readonly").objectStore(HISTORY_STORE).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)});
+}
+async function saveHistoryRecord(snap){
+ await migrateLegacyHistories();let db=await openJunkaiDB();
+ let all=await histories(),same=all.find(v=>v.property?.id===snap.property.id&&normalizeHistoryDate(v.date)===normalizeHistoryDate(snap.date));
+ if(same)snap.id=same.id;
+ return await new Promise((resolve,reject)=>{let tx=db.transaction(HISTORY_STORE,"readwrite");tx.objectStore(HISTORY_STORE).put(snap);tx.oncomplete=()=>resolve(snap);tx.onerror=()=>reject(tx.error)});
+}
+async function deleteHistoryRecord(id){
+ let db=await openJunkaiDB();return await new Promise((resolve,reject)=>{let tx=db.transaction(HISTORY_STORE,"readwrite");tx.objectStore(HISTORY_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+}
 function itemComment(cat,item){
   return (item.photos||[]).map(p=>p.comment||"").find(Boolean) || cat.comment || "";
 }
@@ -422,13 +468,11 @@ function snapshotDraft(){
   }))}))
  };
 }
-function saveCurrentInspection(){
- let h=histories(), snap=snapshotDraft();
- let same=h.findIndex(v=>v.property.id===snap.property.id && v.date===snap.date);
- if(same>=0) h[same]=snap; else h.push(snap);
- saveHistories(h); return snap;
+async function saveCurrentInspection(){
+ let snap=snapshotDraft();snap.date=normalizeHistoryDate(snap.date);
+ await saveHistoryRecord(snap);return snap;
 }
-function validateAndSaveInspection(){
+async function validateAndSaveInspection(){
  if(!requirePhotoCommentBeforeNext()) return false;
  draft.overall=document.getElementById("overall")?.value||draft.overall||"";
  let misses=validateRequired();
@@ -437,16 +481,16 @@ function validateAndSaveInspection(){
    return false;
  }
  saveDraft();
- saveCurrentInspection();
+ try{await saveCurrentInspection()}catch(e){alert("巡回履歴をiPhone内に保存できませんでした。空き容量をご確認ください。");return false}
  return true;
 }
 async function validatedSharePDF(){
  if(!requirePhotoCommentBeforeNext()) return;
- if(!draft||!validateAndSaveInspection())return;
+ if(!draft||!(await validateAndSaveInspection()))return;
  await createAndSharePDF();
 }
 async function validatedPreviewPDF(){
- if(!draft||!validateAndSaveInspection())return;
+ if(!draft||!(await validateAndSaveInspection()))return;
 
  // iPhone/Safariのポップアップ制限対策：
  // タップ直後に確認画面を確保し、その後PDFを生成する。
@@ -466,14 +510,35 @@ async function validatedPreviewPDF(){
    alert("PDFを作成できませんでした。");
  }
 }
-function showMonthly(){
+async function showMonthly(){
  sections("monthly"); title("月次報告書","オーナー様向け");
  let ps=props(); monthProperty.innerHTML=ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
  let d=new Date();monthValue.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
- monthlyResult.innerHTML="";
+ monthlyResult.innerHTML='<div class="card sub">保存済み履歴を読み込んでいます…</div>';
+ try{await migrateLegacyHistories();monthlyResult.innerHTML=""}catch(e){monthlyResult.innerHTML='<div class="card">保存履歴を読み込めませんでした。</div>'}
 }
-function monthRecords(pid,ym){
- return histories().filter(h=>h.property.id===pid && (h.date||"").slice(0,7)===ym).sort((a,b)=>a.date.localeCompare(b.date));
+async function monthRecords(pid,ym){
+ let hs=await histories();
+ return hs.filter(h=>h.property?.id===pid && normalizeHistoryDate(h.date).slice(0,7)===ym).sort((a,b)=>normalizeHistoryDate(a.date).localeCompare(normalizeHistoryDate(b.date)));
+}
+async function showSavedHistory(){
+ sections("savedHistory");title("保存済み巡回履歴","iPhone・iPad ローカル保存");
+ let ps=props();historyProperty.innerHTML='<option value="">すべての物件</option>'+ps.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+ await renderSavedHistory();
+}
+async function renderSavedHistory(){
+ let el=document.getElementById("savedHistoryList");el.innerHTML='<div class="card sub">読み込んでいます…</div>';
+ try{
+  let hs=await histories(),pid=document.getElementById("historyProperty")?.value||"";
+  if(pid)hs=hs.filter(h=>h.property?.id===pid);
+  hs.sort((a,b)=>normalizeHistoryDate(b.date).localeCompare(normalizeHistoryDate(a.date)));
+  if(!hs.length){el.innerHTML='<div class="card">保存済みの巡回履歴はありません。</div>';return}
+  el.innerHTML=hs.map(h=>`<div class="card"><div class="property"><div><b>${escapeHtml(h.property?.name||"")}</b><small>${escapeHtml(normalizeHistoryDate(h.date))}</small></div><span class="pill">保存済み</span></div><div class="property-actions"><button class="smallbtn delete" onclick="removeSavedHistory('${h.id}')">削除</button></div></div>`).join("");
+ }catch(e){el.innerHTML='<div class="card">履歴を読み込めませんでした。</div>'}
+}
+async function removeSavedHistory(id){
+ if(!confirm("この保存済み巡回履歴を削除しますか？"))return;
+ await deleteHistoryRecord(id);await renderSavedHistory();
 }
 function escapeHtml(t){return String(t||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function summarizeMonthly(rs){
@@ -494,8 +559,10 @@ function summarizeMonthly(rs){
  });
  return {counts,issueMap,auto:parts.join(" ") || "今月の巡回では、特段の要対応・経過観察事項はありませんでした。"};
 }
-function buildMonthlyView(){
- let pid=monthProperty.value,ym=monthValue.value,rs=monthRecords(pid,ym);
+async function buildMonthlyView(){
+ let pid=monthProperty.value,ym=monthValue.value;
+ monthlyResult.innerHTML='<div class="card sub">巡回履歴を集約しています…</div>';
+ let rs=await monthRecords(pid,ym);
  if(!rs.length){monthlyResult.innerHTML='<div class="card">この月の保存済み巡回記録はありません。</div>';return}
  let p=props().find(v=>v.id===pid), sm=summarizeMonthly(rs);
  let issueHtml="";
@@ -598,7 +665,7 @@ async function buildReportCanvases(){
  x.fillStyle="#18365b";x.font="800 28px -apple-system, BlinkMacSystemFont, 'Noto Sans JP', sans-serif";
  x.fillText("点検結果一覧",70,420);
  const colX=[70,635],colW=535,topY=452;
- const half=Math.ceil(draft.categories.length/2),groups=[draft.categories.slice(0,half),draft.categories.slice(half)];
+ const groups=[[draft.categories[0],draft.categories[1],draft.categories[2]],[draft.categories[3],draft.categories[4],draft.categories[5],draft.categories[6]]];
  let maxY=topY;
  for(let col=0;col<2;col++){
   let y=topY,bx=colX[col];
@@ -740,7 +807,7 @@ async function previewPDF(){
  }
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.8");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.8.0");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -750,7 +817,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.8: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.8.0: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
