@@ -124,7 +124,8 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
  <div class="home-nav"><button class="home-btn" onclick="goHome()">⌂ ホーム</button></div>
  <div class="card"><h2 style="margin-top:0">巡回内容の確認</h2><div id="completionWarning"></div><div id="summaryBody"></div></div>
  <div class="card"><label>総合コメント</label><textarea id="overall" placeholder="今回の巡回についての総合コメント"></textarea></div>
- <button class="primary" id="pdfShareBtn" onclick="validatedSharePDF()">PDFを作成して会社へ送る</button>
+ <button class="primary" onclick="saveInspectionDataOnly()">点検データを保存</button>
+ <button class="secondary" style="margin-top:9px" id="pdfShareBtn" onclick="validatedSharePDF()">PDFを作成して会社へ送る</button>
  <button class="secondary" style="margin-top:9px" onclick="validatedPreviewPDF()">PDFを作成して確認</button>
  <button class="secondary" style="margin-top:9px" onclick="discardCompleted()">送信・保存済みの巡回データを削除</button>
  <p class="notice">PDFはiPhone内で作成します。写真や点検データを外部サーバーへ送信しません。共有画面で「メール」等を選んで会社へ送信してください。</p>
@@ -493,6 +494,24 @@ function snapshotDraft(){
 async function saveCurrentInspection(){
  let snap=snapshotDraft();snap.date=normalizeHistoryDate(snap.date);
  await saveHistoryRecord(snap);return snap;
+}
+async function saveInspectionDataOnly(){
+ try{
+  if(!validateRequired())return;
+  if(overall)draft.overall=overall.value||"";
+  saveDraft();
+  let snap=snapshotDraft();
+  // Same property/date: replace existing record instead of creating duplicates.
+  let existing=await getAllHistories();
+  let same=existing.filter(h=>String(h.property?.id||h.property?.name)===String(snap.property?.id||snap.property?.name)&&normalizeHistoryDate(h.date)===normalizeHistoryDate(snap.date));
+  if(same.length){snap.id=same[0].id}
+  await putHistory(snap);
+  alert("点検データを保存しました。\n月次報告書に使用できます。");
+  renderHome();
+ }catch(e){
+  console.error(e);
+  alert("点検データを保存できませんでした。\n"+(e?.message||String(e)));
+ }
 }
 async function validateAndSaveInspection(){
  if(!requirePhotoCommentBeforeNext()) return false;
