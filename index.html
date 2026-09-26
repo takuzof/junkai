@@ -61,7 +61,7 @@ label{display:block;font-size:13px;font-weight:700;margin:11px 0 6px;color:#4754
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.1</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.1</div></header>
+<header class="top"><div class="brand">PROPERTY INSPECTION · V1.7.2</div><h1 id="pageTitle">巡回点検</h1><div class="sub" id="pageSub">iPhone 現場点検 V1.7.2</div></header>
 <main>
 <section id="home">
  <div class="card"><h2 style="margin-top:0">定期巡回を開始</h2><p class="sub">登録済みの物件を選択して、現場で点検結果を記録します。</p><button class="primary" onclick="showProperties()">巡回点検を開始</button></div>
@@ -180,11 +180,14 @@ function renderCategory(){let c=CATEGORIES[current],d=draft.categories[current];
 
 let photoTargetItem=null;
 function choosePhotos(i){
- if(!requirePhotoCommentBeforeNext()) return;
  photoTargetItem=i;
  let input=document.getElementById("photoInput");
- input.value="";
- input.click();
+ if(input){
+   input.value="";
+   input.setAttribute("accept","image/*");
+   input.setAttribute("capture","environment");
+   input.click();
+ }
 }
 async function handlePhotos(e){
  let files=[...e.target.files];
@@ -686,7 +689,7 @@ async function previewPDF(){
  catch(e){alert("PDFを作成できませんでした。")}
 }
 
-function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.1");updateDraftInfo();}
+function discardCompleted(){if(!draft)return;if(!confirm("この巡回データと写真をiPhoneから削除しますか？\n会社への保存が済んでから実行してください。"))return;localStorage.removeItem("inspection_draft");draft=null;sections("home");title("巡回点検","iPhone 現場点検 V1.7.2");updateDraftInfo();}
 function resumeDraft(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");if(!d)return;draft=d;current=0;sections("inspection");renderCategory();}
 function saveDraft(){try{localStorage.setItem("inspection_draft",JSON.stringify(draft));updateDraftInfo()}catch(e){alert("iPhone内の保存容量が不足しました。不要な写真を削除してください。")}}
 function updateDraftInfo(){let d=JSON.parse(localStorage.getItem("inspection_draft")||"null");draftInfo.textContent=d?`${d.property.name} / ${d.date} の巡回データがあります`:"現在、作業中の巡回はありません";let b=document.getElementById("resumeBtn");if(b)b.style.display=d?"block":"none"}
@@ -696,7 +699,7 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 </script>
 
 <script>
-/* V1.7.1: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
+/* V1.7.2: ×を選んだ時点で、その項目の既存カメラ入力を自動起動する */
 document.addEventListener("click", function(ev){
   const btn = ev.target.closest("button");
   if(!btn || btn.textContent.trim() !== "×") return;
